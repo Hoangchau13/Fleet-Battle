@@ -1,0 +1,439 @@
+@import url('../UsersManagement/UsersManagement.css');
+
+.ships-management {
+  animation: fadeIn 0.3s ease;
+}
+
+.ships-section {
+  background: #fff;
+  border-radius: var(--radius-lg);
+  padding: 28px;
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-color);
+  margin-bottom: 24px;
+}
+
+.ships-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+
+@media (max-width: 1400px) {
+  .ships-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .ships-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ship-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  transition: all 0.3s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  position: relative;
+}
+
+.ship-card:hover {
+  border-color: #d1d5db;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  transform: translateY(-4px);
+}
+
+.ship-card-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.ship-icon {
+  font-size: 56px;
+  width: 120px;
+  height: 120px;
+  background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(168, 85, 247, 0.15);
+}
+
+.ship-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ship-info h3 {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.ship-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.ship-detail {
+  font-size: 15px;
+  color: #6b7280;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+}
+
+.ship-detail strong {
+  color: #374151;
+  font-weight: 600;
+}
+
+.ship-actions {
+  display: flex;
+  gap: 10px;
+  padding-top: 16px;
+  border-top: 1px solid #f3f4f6;
+  justify-content: flex-end;
+}
+
+/* Import styles from LevelsManagement for consistency */
+.ships-management .modal-detail {
+  max-width: 800px;
+}
+
+.ships-management .ship-detail-content {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.ships-management .detail-section {
+  background: #fff;
+  border-radius: var(--radius-md);
+  padding: 0;
+}
+
+.ships-management .section-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 16px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--border-color);
+}
+
+.ships-management .detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.ships-management .detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  background: #f8f9fa;
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--primary-color);
+}
+
+.ships-management .detail-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.ships-management .detail-value {
+  font-size: 16px;
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.ships-management .detail-value.strong {
+  font-weight: 700;
+  color: var(--primary-color);
+}
+
+.ships-management .debug-toggle {
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  padding: 12px;
+  background: #f8f9fa;
+  border-radius: var(--radius-sm);
+  user-select: none;
+  transition: all 0.2s ease;
+}
+
+.ships-management .debug-toggle:hover {
+  background: #e9ecef;
+  color: var(--primary-color);
+}
+
+.ships-management .debug-data {
+  margin: 12px 0 0 0;
+  padding: 16px;
+  background: #1e1e1e;
+  color: #d4d4d4;
+  border-radius: var(--radius-sm);
+  overflow-x: auto;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+/* Form styles */
+.ships-management .modal-form {
+  max-width: 600px;
+}
+
+.ships-management .form-section {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.ships-management .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ships-management .form-group label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ships-management .label-icon {
+  font-size: 18px;
+}
+
+.ships-management .required {
+  color: var(--danger-color);
+  margin-left: 4px;
+}
+
+.ships-management .form-group input {
+  padding: 12px 16px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  transition: all 0.2s ease;
+  background-color: #fff;
+  font-family: inherit;
+}
+
+.ships-management .form-group input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(117, 79, 254, 0.1);
+}
+
+.ships-management .form-group input:disabled {
+  background-color: #f8f9fa;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.ships-management .form-hint {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin: 0;
+  font-style: italic;
+}
+
+.ships-management .preview-box {
+  margin-top: 24px;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, rgba(117, 79, 254, 0.05), rgba(168, 85, 247, 0.05));
+  border: 1px solid rgba(117, 79, 254, 0.2);
+  border-radius: var(--radius-md);
+}
+
+.ships-management .preview-box h4 {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 12px 0;
+}
+
+.ships-management .preview-box ul {
+  margin: 0;
+  padding-left: 20px;
+  list-style: none;
+}
+
+.ships-management .preview-box li {
+  font-size: 14px;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+  display: flex;
+  gap: 8px;
+}
+
+.ships-management .preview-box strong {
+  color: var(--text-secondary);
+  font-weight: 600;
+  min-width: 150px;
+}
+
+.ships-management .info-box {
+  padding: 16px 20px;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.05), rgba(37, 99, 235, 0.05));
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  border-radius: var(--radius-md);
+  margin-bottom: 24px;
+}
+
+.ships-management .info-box h4 {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 12px 0;
+}
+
+.ships-management .info-box p {
+  font-size: 14px;
+  color: var(--text-primary);
+  margin: 6px 0;
+}
+
+.ships-management .info-box strong {
+  color: var(--text-secondary);
+  font-weight: 600;
+  min-width: 140px;
+  display: inline-block;
+}
+
+.ships-management .changes-preview {
+  margin-top: 24px;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.05), rgba(5, 150, 105, 0.05));
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  border-radius: var(--radius-md);
+}
+
+.ships-management .changes-preview h4 {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0 0 12px 0;
+}
+
+.ships-management .changes-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ships-management .change-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.ships-management .change-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  min-width: 140px;
+}
+
+.ships-management .change-values {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+
+.ships-management .old-value {
+  padding: 6px 12px;
+  background: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: line-through;
+  opacity: 0.8;
+}
+
+.ships-management .new-value {
+  padding: 6px 12px;
+  background: rgba(16, 185, 129, 0.1);
+  color: #059669;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.ships-management .arrow {
+  font-size: 16px;
+  color: var(--text-secondary);
+}
+
+.ships-management .spinner-small {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  display: inline-block;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 768px) {
+  .ships-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .ships-management .modal-form,
+  .ships-management .modal-detail {
+    width: 95%;
+    max-width: 95%;
+  }
+  
+  .ships-management .detail-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .ships-management .change-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .ships-management .change-label {
+    min-width: auto;
+  }
+}

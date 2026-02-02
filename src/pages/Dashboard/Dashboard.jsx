@@ -110,9 +110,6 @@ function Dashboard() {
           <h1>Dashboard</h1>
           <p className="subtitle">Xin chào! Đây là tổng quan hệ thống Fleet Battle</p>
         </div>
-        <button className="btn-primary" onClick={() => window.location.reload()}>
-          🔄 Làm mới
-        </button>
       </div>
 
       {/* Stats Grid */}

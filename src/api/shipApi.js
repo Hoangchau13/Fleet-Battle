@@ -46,8 +46,9 @@ export const createShipType = async (shipTypeData) => {
 export const updateShipType = async (shipTypeId, shipTypeData) => {
   try {
     const response = await apiClient.put(`/game/shiptypes/${shipTypeId}`, {
-      shipTypeName: shipTypeData.shipTypeName,
-      size: parseInt(shipTypeData.size)
+      shipName: shipTypeData.shipName,
+      size: parseInt(shipTypeData.size),
+      modelCode: shipTypeData.modelCode
     });
     return response.data;
   } catch (error) {

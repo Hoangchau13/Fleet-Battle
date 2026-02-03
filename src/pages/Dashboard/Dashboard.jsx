@@ -32,6 +32,8 @@ function Dashboard() {
         getShipTypes().catch(() => [])
       ])
 
+      console.log('Raw levels data from API:', levelsData) // Debug log
+
       // Process users data
       const usersArray = Array.isArray(usersData) ? usersData : (usersData?.data || usersData?.users || [])
       const activeUsersCount = usersArray.filter(u => u.isActive).length
@@ -39,6 +41,7 @@ function Dashboard() {
 
       // Process levels data
       const levelsArray = Array.isArray(levelsData) ? levelsData : (levelsData?.data || levelsData?.levels || [])
+      console.log('Processed levels array:', levelsArray) // Debug log
 
       // Process ship types data
       const shipTypesArray = Array.isArray(shipTypesData) ? shipTypesData : (shipTypesData?.data || [])
@@ -57,7 +60,10 @@ function Dashboard() {
         .slice(0, 3)
       setRecentUsers(sortedUsers)
 
-      setLevels(levelsArray.slice(0, 3))
+      // Get first 3 levels from API
+      const topLevels = levelsArray.slice(0, 3)
+      console.log('Top 3 levels to display:', topLevels) // Debug log
+      setLevels(topLevels)
 
     } catch (error) {
       console.error('Error fetching dashboard data:', error)
@@ -181,9 +187,6 @@ function Dashboard() {
               <div className="levels-list">
                 {levels.map((level, index) => (
                   <div key={level.levelId || level.id || index} className="level-item">
-                    <div className="level-icon">
-                      {index === 0 ? '⭐' : index === 1 ? '🔥' : '💎'}
-                    </div>
                     <div className="level-info">
                       <div className="level-name">{level.levelName || level.name || `Level ${level.levelId}`}</div>
                       <div className="level-details">

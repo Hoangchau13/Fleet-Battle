@@ -92,10 +92,12 @@ function ShipsManagement() {
   };
 
   const handleEditClick = (ship) => {
+    console.log('Edit ship data:', ship); // Debug: kiểm tra dữ liệu
     setSelectedShip(ship);
     setFormData({
-      shipTypeName: ship.shipTypeName || ship.name || '',
-      size: ship.size || 1
+      shipName: ship.shipName || '',
+      size: ship.size || 1,
+      modelCode: ship.modelCode || ''
     });
     setShowEditModal(true);
   };
@@ -105,14 +107,27 @@ function ShipsManagement() {
     try {
       setLoadingSubmit(true);
       setError(null);
-      await updateShipType(selectedShip.shipTypeId || selectedShip.id, formData);
+      
+      // Debug log
+      console.log('Updating ship:', selectedShip);
+      console.log('Form data:', formData);
+      console.log('Ship Type ID:', selectedShip.shipTypeId);
+      
+      const shipId = selectedShip.shipTypeId;
+      if (!shipId) {
+        throw new Error('Ship Type ID không hợp lệ');
+      }
+      
+      await updateShipType(shipId, formData);
       setSuccess('Cập nhật ship type thành công! 🎉');
       setTimeout(() => setSuccess(null), 3000);
       setShowEditModal(false);
+      setFormData({ shipTypeName: '', size: 1 });
       await fetchShipTypes();
     } catch (err) {
       console.error('Update ship error:', err);
-      setError(err.response?.data?.message || 'Không thể cập nhật ship type. Vui lòng thử lại.');
+      console.error('Error response:', err.response?.data);
+      setError(err.response?.data?.message || err.message || 'Không thể cập nhật ship type. Vui lòng thử lại.');
       setTimeout(() => setError(null), 3000);
     } finally {
       setLoadingSubmit(false);
@@ -125,8 +140,8 @@ function ShipsManagement() {
         await deleteShipType(shipTypeId);
         setSuccess('Đã xóa ship type thành công!');
         setTimeout(() => setSuccess(null), 3000);
-        await fetchShipTypes();
-      } catch (err) {
+      await fetchShipTypes();
+      } catch {
         setError('Không thể xóa ship type. Vui lòng thử lại.');
         setTimeout(() => setError(null), 3000);
       }
@@ -388,28 +403,28 @@ function ShipsManagement() {
               <h2>✏️ Cập nhật Ship Type</h2>
               <button className="modal-close" onClick={() => setShowEditModal(false)}>✕</button>
             </div>
-
             <form onSubmit={handleUpdateShip}>
               <div className="modal-body">
                 <div className="info-box">
                   <h4>📌 Ship Type hiện tại:</h4>
-                  <p><strong>Ship Type ID:</strong> {selectedShip.shipTypeId || selectedShip.id}</p>
-                  <p><strong>Ship Type Name:</strong> {selectedShip.shipTypeName || selectedShip.name || 'N/A'}</p>
+                  <p><strong>Ship Type ID:</strong> {selectedShip.shipTypeId}</p>
+                  <p><strong>Ship Name:</strong> {selectedShip.shipName || 'N/A'}</p>
+                  <p><strong>Size hiện tại:</strong> {selectedShip.size || 'N/A'}</p>
                 </div>
 
                 <div className="form-section">
                   <div className="form-group">
-                    <label htmlFor="editShipTypeName">
+                    <label htmlFor="editShipName">
                       <span className="label-icon">🏷️</span>
-                      Ship Type Name
+                      Ship Name
                       <span className="required">*</span>
                     </label>
                     <input
                       type="text"
-                      id="editShipTypeName"
-                      name="shipTypeName"
-                      value={formData.shipTypeName}
-                      onChange={(e) => setFormData(prev => ({ ...prev, shipTypeName: e.target.value }))}
+                      id="editShipName"
+                      name="shipName"
+                      value={formData.shipName}
+                      onChange={(e) => setFormData(prev => ({ ...prev, shipName: e.target.value }))}
                       placeholder="Nhập tên loại tàu"
                       required
                       disabled={loadingSubmit}
@@ -437,6 +452,25 @@ function ShipsManagement() {
                     />
                     <p className="form-hint">Kích thước tàu (số ô chiếm trên bàn chơi). Từ 1 đến 10</p>
                   </div>
+
+                  <div className="form-group">
+                    <label htmlFor="editModelCode">
+                      <span className="label-icon">🔖</span>
+                      Model Code
+                      <span className="required">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      id="editModelCode"
+                      name="modelCode"
+                      value={formData.modelCode}
+                      onChange={(e) => setFormData(prev => ({ ...prev, modelCode: e.target.value }))}
+                      placeholder="Nhập mã model"
+                      required
+                      disabled={loadingSubmit}
+                    />
+                    <p className="form-hint">Mã định danh model của tàu</p>
+                  </div>
                 </div>
               </div>
 
@@ -452,7 +486,7 @@ function ShipsManagement() {
                 <button 
                   type="submit" 
                   className="btn-primary"
-                  disabled={loadingSubmit || !formData.shipTypeName || formData.size < 1}
+                  disabled={loadingSubmit || !formData.shipName || !formData.modelCode || formData.size < 1}
                 >
                   {loadingSubmit ? (
                     <>

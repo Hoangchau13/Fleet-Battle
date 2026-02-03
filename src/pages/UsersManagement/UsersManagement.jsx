@@ -16,6 +16,8 @@ function UsersManagement() {
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [loadingUpdate, setLoadingUpdate] = useState(false);
   const [loadingCreate, setLoadingCreate] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [userToDelete, setUserToDelete] = useState(null);
   const [editFormData, setEditFormData] = useState({
     role: '',
     isActive: true
@@ -229,17 +231,49 @@ function UsersManagement() {
     }
   };
 
-  const handleDeleteUser = async (userId) => {
-    if (window.confirm('Bạn có chắc muốn xóa user này?')) {
-      try {
-        await deleteUser(userId);
-        setUsers(prev => prev.filter(u => u.id !== userId));
-        setSuccess('Đã xóa user thành công!');
-        setTimeout(() => setSuccess(null), 3000);
-      } catch (err) {
-        setError('Không thể xóa user. Vui lòng thử lại.');
-        setTimeout(() => setError(null), 3000);
-      }
+  const handleDeleteClick = (user) => {
+    setUserToDelete(user);
+    setShowDeleteModal(true);
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteModal(false);
+    setUserToDelete(null);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!userToDelete) return;
+
+    const userId = userToDelete.id || userToDelete.userId;
+    if (!userId) {
+      setError('User ID không hợp lệ');
+      setTimeout(() => setError(null), 3000);
+      setShowDeleteModal(false);
+      return;
+    }
+
+    try {
+      console.log('Deleting user with ID:', userId);
+      await deleteUser(userId);
+      
+      // Cập nhật danh sách local
+      setUsers(prev => prev.filter(u => (u.userId || u.id) !== userId));
+      
+      setSuccess(`Đã xóa user "${userToDelete.username}" thành công! ✓`);
+      setTimeout(() => setSuccess(null), 3000);
+      
+      setShowDeleteModal(false);
+      setUserToDelete(null);
+      
+      // Refresh lại danh sách từ server
+      await fetchUsers();
+    } catch (err) {
+      console.error('Error deleting user:', err);
+      console.error('Error response:', err.response);
+      setError(err.response?.data?.message || 'Không thể xóa user. Vui lòng kiểm tra quyền truy cập hoặc thử lại.');
+      setTimeout(() => setError(null), 5000);
+      setShowDeleteModal(false);
+      setUserToDelete(null);
     }
   };
 
@@ -275,10 +309,16 @@ function UsersManagement() {
         </button>
       </div>
 
-      {/* Success message only (errors are shown in modals) */}
+      {/* Success and Error messages */}
       {success && (
         <div className="alert alert-success">
           ✓ {success}
+        </div>
+      )}
+      
+      {error && !showEditModal && !showCreateModal && (
+        <div className="alert alert-error">
+          ⚠️ {error}
         </div>
       )}
 
@@ -361,7 +401,7 @@ function UsersManagement() {
                         <button 
                           className="btn-icon btn-delete"
                           title="Xóa"
-                          onClick={() => handleDeleteUser(user.id || user.userId)}
+                          onClick={() => handleDeleteClick(user)}
                         >
                           🗑️
                         </button>
@@ -672,6 +712,62 @@ function UsersManagement() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Xác Nhận Xóa */}
+      {showDeleteModal && userToDelete && (
+        <div className="modal-overlay" onClick={handleCancelDelete}>
+          <div className="modal-content modal-confirm" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header modal-header-danger">
+              <div className="modal-icon-danger">⚠️</div>
+              <h2>Xác Nhận Xóa User</h2>
+              <button className="modal-close" onClick={handleCancelDelete}>✕</button>
+            </div>
+
+            <div className="modal-body">
+              <div className="confirm-message">
+                <p className="confirm-text">
+                  Bạn có chắc chắn muốn xóa user <strong>"{userToDelete.username}"</strong> không?
+                </p>
+                <div className="user-info-box">
+                  <div className="info-row">
+                    <span className="info-label">📧 Email:</span>
+                    <span className="info-value">{userToDelete.email}</span>
+                  </div>
+                  <div className="info-row">
+                    <span className="info-label">👤 Role:</span>
+                    <span className="info-value">{userToDelete.role}</span>
+                  </div>
+                </div>
+                <div className="warning-box">
+                  <strong>⚠️ Lưu ý:</strong>
+                  <ul>
+                    <li>Thao tác này không thể hoàn tác</li>
+                    <li>Tất cả dữ liệu liên quan đến user sẽ bị xóa</li>
+                    <li>Cần quyền SuperAdmin để xóa Admin</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div className="modal-footer">
+              <button 
+                type="button" 
+                className="btn-secondary" 
+                onClick={handleCancelDelete}
+              >
+                ❌ Hủy
+              </button>
+              <button 
+                type="button" 
+                className="btn-danger"
+                onClick={handleConfirmDelete}
+              >
+                🗑️ Xác Nhận Xóa
+              </button>
+            </div>
           </div>
         </div>
       )}

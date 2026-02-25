@@ -78,7 +78,6 @@
   justify-content: space-between;
   align-items: flex-start;
   gap: 12px;
-  padding: 0 24px;
 }
 
 .level-title {
@@ -115,7 +114,6 @@
 .level-stat-row {
   display: flex;
   gap: 12px;
-  padding: 0 24px;
 }
 
 .level-stat-row .stat-icon {
@@ -149,29 +147,28 @@
 .level-card-actions {
   display: flex;
   gap: 12px;
-  padding: 4px 24px 0;
 }
 
 .btn-level-edit {
   flex: 1;
-  padding: 10px 16px;
+  padding: 10px 12px;
   background: white;
   color: #000000;
   border: 1px solid #d1d5db;
   border-radius: 6px;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   cursor: pointer;
 }
 
 .btn-level-configure {
   flex: 1;
-  padding: 10px 16px;
+  padding: 10px 12px;
   background: #f3f4f6;
   color: #000000;
   border: 1px solid #f3f4f6;
   border-radius: 6px;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   cursor: pointer;
 }

@@ -197,7 +197,7 @@ function ShipsManagement() {
           {shipTypes.map((ship, index) => (
               <div key={ship.shipTypeId || index} className="ship-card">
                 <div className="ship-card-header">
-                  <div className="ship-icon"><Ship size={32} /></div>
+                  <div className="ship-icon-manage"><Ship size={32} /></div>
                   <div className="ship-info">
                     <h3>{ship.shipName}</h3>
                     <span className="ship-size-badge">Size: {ship.size} cells</span>

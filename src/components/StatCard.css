@@ -1,4 +1,4 @@
-.stat-card {
+.stat-card-dashboard {
   background: #ffffff;
   border-radius: 16px;
   padding: 24px;
@@ -20,7 +20,6 @@
 .stat-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
 }
 
 .stat-title {
@@ -32,9 +31,8 @@
   margin: 0;
 }
 
-.stat-icon {
+.stat-icon-dashboard {
   display: flex;
-  align-items: center;
   justify-content: center;
   width: 48px;
   height: 48px;
@@ -50,20 +48,20 @@
 
 /* Icon colors and backgrounds based on position */
 
-.stat-card:nth-child(1) .stat-icon svg {
-  color: #6366f1;
+.stat-card-dashboard:nth-child(1) .stat-icon-dashboard svg {
+  color: #2b7fff;
 }
 
-.stat-card:nth-child(2) .stat-icon svg {
-  color: #22c55e;
+.stat-card-dashboard:nth-child(2) .stat-icon-dashboard svg {
+  color: #00c950;
 }
 
-.stat-card:nth-child(3) .stat-icon svg {
-  color: #a855f7;
+.stat-card-dashboard:nth-child(3) .stat-icon-dashboard svg {
+  color: #ad46ff;
 }
 
-.stat-card:nth-child(4) .stat-icon svg {
-  color: #3b82f6;
+.stat-card-dashboard:nth-child(4) .stat-icon-dashboard svg {
+  color: #00b8db;
 }
 
 .stat-body {

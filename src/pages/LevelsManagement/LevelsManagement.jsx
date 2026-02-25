@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getAdminLevels, getLevelById, createLevel, updateLevel, deleteLevel, configureLevelShips, getShipTypes } from '../../api';
+import { Grid3x3, Clock, Settings, Plus } from 'lucide-react';
 import './LevelsManagement.css';
 
 function LevelsManagement() {
@@ -230,9 +231,13 @@ function LevelsManagement() {
   return (
     <div className="levels-management">
       <div className="page-header">
-        <h1>🎮 Quản lý Levels</h1>
-        <button className="btn-primary" onClick={() => setShowCreateModal(true)}>
-          ➕ Tạo Level Mới
+        <div>
+          <h1>Level Management</h1>
+          <p className="page-subtitle">Configure game levels and difficulty settings</p>
+        </div>
+        <button className="btn-create" onClick={() => setShowCreateModal(true)}>
+          <Plus size={20} />
+          Create New Level
         </button>
       </div>
 
@@ -248,76 +253,72 @@ function LevelsManagement() {
         </div>
       )}
 
-      <div className="levels-section">
-        <div className="section-header">
-          <h2>Danh sách Levels</h2>
-          <span className="badge">{Array.isArray(levels) ? levels.length : 0} levels</span>
+      {loading ? (
+        <div className="loading">Đang tải danh sách levels...</div>
+      ) : !Array.isArray(levels) || levels.length === 0 ? (
+        <div className="empty-state">
+          <div className="empty-icon">🎮</div>
+          <h3>Chưa có level nào</h3>
+          <p>Hãy tạo level đầu tiên cho game!</p>
+          <button className="btn-primary" onClick={() => setShowCreateModal(true)}>
+            ➕ Tạo Level Mới
+          </button>
         </div>
-
-        {loading ? (
-          <div className="loading">Đang tải danh sách levels...</div>
-        ) : !Array.isArray(levels) || levels.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-icon">🎮</div>
-            <h3>Chưa có level nào</h3>
-            <p>Hãy tạo level đầu tiên cho game!</p>
-            <button className="btn-primary" onClick={() => setShowCreateModal(true)}>
-              ➕ Tạo Level Mới
-            </button>
-          </div>
-        ) : (
-          <div className="levels-grid">
-            {levels.map((level, index) => (
-              <div key={level.levelId} className="level-card">
-                <div className="level-header">
-                  <div className="level-icon">🗺️</div>
-                  <div className="level-info">
-                    <h3>{level.name}</h3>
-                    <div>
-                      <p className="level-detail">
-                        📏 Board: <strong>{level.boardSize}x{level.boardSize}</strong>
-                      </p>
-                      <p className="level-detail">
-                        ⏱️ Time: <strong>{level.timeLimit}s</strong>
-                      </p>
+      ) : (
+        <div className="levels-grid">
+          {levels.map((level, index) => {
+            const levelNumber = index + 1;
+            const shipsCount = level.ships?.length || 0;
+              
+              return (
+                <div key={level.levelId} className="level-card">
+                  <div className="level-header">
+                    <h3 className="level-title">{level.name}</h3>
+                    <span className="level-badge">Level {levelNumber}</span>
+                  </div>
+                  
+                  {level.description && (
+                    <p className="level-description">{level.description}</p>
+                  )}
+                  
+                  <div className="level-stats">
+                    <div className="level-stat-row">
+                      <Grid3x3 size={20} className="stat-icon" />
+                      <span className="stat-label">Board Size</span>
+                      <span className="stat-value">{level.boardSize}x{level.boardSize}</span>
+                    </div>
+                    <div className="level-stat-row">
+                      <Clock size={20} className="stat-icon" />
+                      <span className="stat-label">Time Limit</span>
+                      <span className="stat-value">{level.timeLimit}s per turn</span>
+                    </div>
+                    <div className="level-stat-row">
+                      <Settings size={20} className="stat-icon" />
+                      <span className="stat-label">Ships Configured</span>
+                      <span className="stat-value">{shipsCount} types</span>
                     </div>
                   </div>
+                  
+                  <div className="level-card-actions">
+                    <button 
+                      className="btn-level-edit"
+                      onClick={() => handleEditClick(level)}
+                    >
+                      Edit
+                    </button>
+                    <button 
+                      className="btn-level-configure"
+                      onClick={() => handleOpenShipConfig(level)}
+                    >
+                      Configure Ships
+                    </button>
+                  </div>
                 </div>
-                <div className="level-actions">
-                  <button 
-                    className="btn-icon btn-view"
-                    title="Xem chi tiết"
-                    onClick={() => handleViewDetail(level.levelId)}
-                  >
-                    👁️
-                  </button>
-                  <button 
-                    className="btn-icon btn-ship"
-                    title="Cấu hình Tàu"
-                    onClick={() => handleOpenShipConfig(level)}
-                  >
-                    ⚓
-                  </button>
-                  <button 
-                    className="btn-icon btn-edit"
-                    title="Chỉnh sửa"
-                    onClick={() => handleEditClick(level)}
-                  >
-                    ✏️
-                  </button>
-                  <button 
-                    className="btn-icon btn-delete"
-                    title="Xóa"
-                    onClick={() => handleDeleteLevel(level.levelId || level.id)}
-                  >
-                    🗑️
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
-        )}
-      </div>
+        )
+      }
 
       {/* Modal Chi tiết Level */}
       {showDetailModal && (

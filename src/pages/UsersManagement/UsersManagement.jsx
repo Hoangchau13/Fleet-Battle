@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getUsers, getUserById, updateUserRole, updateUserStatus, deleteUser, register, getRoles } from '../../api';
+import { Search, Eye, Pencil, Trash2 } from 'lucide-react';
 import './UsersManagement.css';
 
 function UsersManagement() {
@@ -18,6 +19,10 @@ function UsersManagement() {
   const [loadingCreate, setLoadingCreate] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [userToDelete, setUserToDelete] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [roleFilter, setRoleFilter] = useState('All Roles');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(8);
   const [editFormData, setEditFormData] = useState({
     role: '',
     isActive: true
@@ -297,16 +302,45 @@ function UsersManagement() {
     }
   };
 
+  // Filter and pagination logic
+  const filteredUsers = Array.isArray(users) ? users.filter(user => {
+    const matchesSearch = 
+      user.username?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.email?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesRole = roleFilter === 'All Roles' || user.role === roleFilter;
+    return matchesSearch && matchesRole;
+  }) : [];
+
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentUsers = filteredUsers.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+
+  // Get user initials and background color
+  const getUserInitials = (username) => {
+    if (!username) return 'U';
+    const parts = username.split('_');
+    if (parts.length > 1) {
+      return parts.map(p => p.charAt(0).toUpperCase()).join('');
+    }
+    return username.substring(0, 2).toUpperCase();
+  };
+
+  const getAvatarColor = () => {
+    return '#e0e7ff'; // Single primary color for all avatars
+  };
+
+  const getAvatarTextColor = () => {
+    return '#2a219f'; // Consistent text color
+  };
+
   return (
     <div className="users-management">
       <div className="page-header">
-        <h1>👥 Quản lý Users</h1>
-        <button 
-          className="btn-primary"
-          onClick={() => setShowCreateModal(true)}
-        >
-          ➕ Tạo User Mới
-        </button>
+        <div>
+          <h1>User Management</h1>
+          <p className="page-subtitle">Manage players and administrators</p>
+        </div>
       </div>
 
       {/* Success and Error messages */}
@@ -322,129 +356,148 @@ function UsersManagement() {
         </div>
       )}
 
-      {/* Danh sách users */}
-      <div className="users-section">
-        <div className="section-header">
-          <h2>Danh sách Users</h2>
-          <span className="badge">{Array.isArray(users) ? users.length : 0} users</span>
+      {/* Search and Filter + Table */}
+      <div className="content-card">
+        <div className="table-controls">
+          <div className="search-box">
+            <Search size={18} className="search-icon" />
+            <input 
+              type="text" 
+              placeholder="Search by username or email..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+          <select 
+            className="role-filter"
+            value={roleFilter}
+            onChange={(e) => setRoleFilter(e.target.value)}
+          >
+            <option>All Roles</option>
+            <option>Player</option>
+            <option>Admin</option>
+          </select>
         </div>
 
+        {/* Users Table */}
         {loading ? (
-          <div className="loading">Đang tải danh sách users...</div>
+          <div className="loading">Loading users...</div>
         ) : !Array.isArray(users) || users.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-icon">👤</div>
-            <h3>Chưa có user nào</h3>
-            <p>Danh sách users đang trống</p>
+            <h3>No users found</h3>
+            <p>User list is empty</p>
           </div>
         ) : (
-          <div className="users-table-container">
-            <table className="users-table">
-              <thead>
-                <tr>
-                  <th>Username</th>
-                  <th>Email</th>
-                  <th>Full Name</th>
-                  <th>Role</th>
-                  <th>Status</th>
-                  <th>Created At</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {Array.isArray(users) && users.map((user, index) => (
-                  <tr key={user.id || index}>
-                    <td>
-                      <div className="user-cell">
-                        <div className="user-avatar">
-                          {user.username?.charAt(0).toUpperCase() || 'U'}
-                        </div>
-                        <span className="user-name">{user.username || 'N/A'}</span>
-                      </div>
-                    </td>
-                    <td>{user.email || 'N/A'}</td>
-                    <td>{user.fullName || 'N/A'}</td>
-                    <td>
-                      <span className={`role-badge role-${user.role?.toLowerCase() || 'user'}`}>
-                        {user.role || 'User'}
-                      </span>
-                    </td>
-                    <td>
-                      <span className={`status-badge status-${user.isActive ? 'active' : 'inactive'}`}>
-                        {user.isActive ? 'Active' : 'Inactive'}
-                      </span>
-                    </td>
-                    <td>
-                      {user.createdAt 
-                        ? new Date(user.createdAt).toLocaleDateString('vi-VN') 
-                        : 'N/A'}
-                    </td>
-                    <td>
-                      <div className="action-buttons">
-                        <button 
-                          className="btn-icon btn-view"
-                          title="Xem chi tiết"
-                          onClick={() => {
-                            console.log('Clicking view for user:', user);
-                            handleViewDetail(user.id || user.userId);
-                          }}
-                        >
-                          👁️
-                        </button>
-                        <button 
-                          className="btn-icon btn-edit"
-                          title="Chỉnh sửa"
-                          onClick={() => handleEditUser(user)}
-                        >
-                          ✏️
-                        </button>
-                        <button 
-                          className="btn-icon btn-delete"
-                          title="Xóa"
-                          onClick={() => handleDeleteClick(user)}
-                        >
-                          🗑️
-                        </button>
-                      </div>
-                    </td>
+          <>
+            <div className="users-section">
+              <div className="users-table-container">
+                <table className="users-table">
+                <thead>
+                  <tr>
+                    <th>User</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                    <th>Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {currentUsers.map((user, index) => {
+                    const bgColor = getAvatarColor();
+                    const textColor = getAvatarTextColor();
+                    
+                    return (
+                      <tr key={user.id || index}>
+                        <td>
+                          <div className="user-cell">
+                            <div 
+                              className="user-avatar"
+                              style={{ 
+                                background: bgColor,
+                                color: textColor
+                              }}
+                            >
+                              {getUserInitials(user.username)}
+                            </div>
+                            <span className="user-name">{user.username || 'N/A'}</span>
+                          </div>
+                        </td>
+                        <td className="text-gray">{user.email || 'N/A'}</td>
+                        <td>
+                          <span className={`role-badge ${user.role === 'Admin' ? 'role-admin' : 'role-player'}`}>
+                            {user.role || 'Player'}
+                          </span>
+                        </td>
+                        <td>
+                          <span className={`status-badge ${user.isActive ? 'status-active' : 'status-banned'}`}>
+                            {user.isActive ? 'Active' : 'Banned'}
+                          </span>
+                        </td>
+                        <td className="text-gray">
+                          {user.createdAt 
+                            ? new Date(user.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' })
+                            : 'N/A'}
+                        </td>
+                        <td>
+                          <button 
+                            className="btn-icon-view"
+                            title="View details"
+                            onClick={() => handleViewDetail(user.id || user.userId)}
+                          >
+                            <Eye size={18} />
+                          </button>
+                          <button 
+                            className="btn-icon-edit"
+                            title="Edit user"
+                            onClick={() => handleEditUser(user)}
+                          >
+                            <Pencil size={18} />
+                          </button>
+                          <button 
+                            className="btn-icon-delete"
+                            title="Delete user"
+                            onClick={() => handleDeleteClick(user)}
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
-        )}
-      </div>
 
-      {/* Stats */}
-      {Array.isArray(users) && users.length > 0 && (
-        <div className="stats-section">
-          <div className="stat-card">
-            <div className="stat-icon">👥</div>
-            <div className="stat-info">
-              <h3>Tổng Users</h3>
-              <p className="stat-value">{users.length}</p>
+          {/* Pagination */}
+          <div className="pagination">
+            <span className="pagination-info">
+              Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filteredUsers.length)} of {filteredUsers.length} users
+            </span>
+            <div className="pagination-controls">
+              <button 
+                className="pagination-btn"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage(prev => prev - 1)}
+              >
+                Previous
+              </button>
+              <button className="pagination-btn active">{currentPage}</button>
+              <button 
+                className="pagination-btn"
+                disabled={currentPage === totalPages || totalPages === 0}
+                onClick={() => setCurrentPage(prev => prev + 1)}
+              >
+                Next
+              </button>
             </div>
           </div>
-          <div className="stat-card">
-            <div className="stat-icon">✅</div>
-            <div className="stat-info">
-              <h3>Active Users</h3>
-              <p className="stat-value">
-                {users.filter(u => u.isActive).length}
-              </p>
-            </div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-icon">👑</div>
-            <div className="stat-info">
-              <h3>Admins</h3>
-              <p className="stat-value">
-                {users.filter(u => u.role?.toLowerCase() === 'admin').length}
-              </p>
-            </div>
-          </div>
-        </div>
+        </>
       )}
+    </div>
+
+     
 
       {/* Modal Chi tiết User */}
       {showDetailModal && (

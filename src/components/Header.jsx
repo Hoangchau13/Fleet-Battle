@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Ship, User, LogOut } from 'lucide-react'
 import { logout } from '../api'
 import './Header.css'
 
@@ -35,10 +36,9 @@ function Header({ toggleSidebar, hideToggle = false }) {
             </span>
           </button>
         )}
-        {!hideToggle && <input type="text" className="search-input" placeholder="Search" />}
         {hideToggle && (
           <div className="header-logo">
-            <span className="logo-icon">⚓</span>
+            <Ship size={24} className="logo-icon" />
             <span className="logo-text">Fleet Battle</span>
           </div>
         )}
@@ -49,12 +49,12 @@ function Header({ toggleSidebar, hideToggle = false }) {
             className="user-avatar" 
             onClick={() => setShowUserMenu(!showUserMenu)}
           >
-            👤
+            <User size={20} />
           </div>
           {showUserMenu && (
             <div className="user-dropdown">
               <button className="dropdown-item logout" onClick={handleLogout}>
-                <span>🚪</span> Đăng xuất
+                <LogOut size={16} /> Đăng xuất
               </button>
             </div>
           )}

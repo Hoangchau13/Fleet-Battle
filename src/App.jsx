@@ -1,15 +1,35 @@
 import { useState, useEffect } from 'react'
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import './App.css'
 import Sidebar from './components/Sidebar'
-import Header from './components/Header'
 import ProtectedRoute from './components/ProtectedRoute'
 import Login from './pages/Login/Login'
 import Dashboard from './pages/Dashboard/Dashboard'
-import HomePage from './pages/HomePage/HomePage'
 import LevelsManagement from './pages/LevelsManagement/LevelsManagement'
 import ShipsManagement from './pages/ShipsManagement/ShipsManagement'
 import UsersManagement from './pages/UsersManagement/UsersManagement'
+import GamesManagement from './pages/GamesManagement/GamesManagement'
+
+function AdminLayout({ isSidebarOpen, toggleSidebar }) {
+  return (
+    <div className="dashboard">
+      <Sidebar isOpen={isSidebarOpen} />
+
+      <main className={`main-content ${!isSidebarOpen ? 'sidebar-closed' : ''}`}>
+        <div className="content">
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/levels" element={<LevelsManagement />} />
+            <Route path="/ships" element={<ShipsManagement />} />
+            <Route path="/users" element={<UsersManagement />} />
+            <Route path="/games" element={<GamesManagement />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </div>
+      </main>
+    </div>
+  )
+}
 
 function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
@@ -74,7 +94,6 @@ function App() {
               {isPlayer ? (
                 // Player layout - No sidebar
                 <div className="player-layout">
-                  <Header toggleSidebar={toggleSidebar} hideToggle={true} />
                   <div className="player-content">
                     <Routes>
                       <Route path="/" element={<HomePage />} />
@@ -85,23 +104,7 @@ function App() {
                 </div>
               ) : (
                 // Admin layout - With sidebar
-                <div className="dashboard">
-                  <Sidebar isOpen={isSidebarOpen} />
-
-                  <main className={`main-content ${!isSidebarOpen ? 'sidebar-closed' : ''}`}>
-                    <Header toggleSidebar={toggleSidebar} />
-
-                    <div className="content">
-                      <Routes>
-                        <Route path="/" element={<Dashboard />} />
-                        <Route path="/levels" element={<LevelsManagement />} />
-                        <Route path="/ships" element={<ShipsManagement />} />
-                        <Route path="/users" element={<UsersManagement />} />
-                        <Route path="*" element={<Navigate to="/" replace />} />
-                      </Routes>
-                    </div>
-                  </main>
-                </div>
+                <AdminLayout isSidebarOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
               )}
             </ProtectedRoute>
           }

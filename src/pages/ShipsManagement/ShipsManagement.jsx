@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Ship } from 'lucide-react';
 import { getShipTypes, getShipTypeById, createShipType, updateShipType, deleteShipType } from '../../api';
 import './ShipsManagement.css';
 
@@ -19,6 +20,17 @@ function ShipsManagement() {
     size: 1,
     modelCode: ''
   });
+
+  const getShipDescription = (shipName) => {
+    const descriptions = {
+      'Aircraft Carrier': 'The largest and most powerful ship in your fleet',
+      'Battleship': 'Heavy armored vessel with powerful weapons',
+      'Cruiser': 'Fast and versatile mid-size warship',
+      'Submarine': 'Stealthy underwater combat vessel',
+      'Destroyer': 'Quick attack ship designed for anti-submarine warfare'
+    };
+    return descriptions[shipName] || 'A naval combat vessel';
+  };
 
   useEffect(() => {
     fetchShipTypes();
@@ -151,10 +163,10 @@ function ShipsManagement() {
   return (
     <div className="ships-management">
       <div className="page-header">
-        <h1>⚓ Quản lý Ship Types</h1>
-        <button className="btn-primary" onClick={() => setShowCreateModal(true)}>
-          ➕ Tạo Ship Type Mới
-        </button>
+        <div>
+          <h1>Ship Types Dictionary</h1>
+          <p className="page-subtitle">Available ship types for level configuration</p>
+        </div>
       </div>
 
       {error && (
@@ -169,66 +181,38 @@ function ShipsManagement() {
         </div>
       )}
 
-      <div className="ships-section">
-        <div className="section-header">
-          <h2>Danh sách Ship Types</h2>
-          <span className="badge">{Array.isArray(shipTypes) ? shipTypes.length : 0} ship types</span>
+      {loading ? (
+        <div className="loading">Đang tải danh sách ship types...</div>
+      ) : !Array.isArray(shipTypes) || shipTypes.length === 0 ? (
+        <div className="empty-state">
+          <div className="empty-icon">⚓</div>
+          <h3>Chưa có ship type nào</h3>
+          <p>Hãy tạo ship type đầu tiên!</p>
+          <button className="btn-primary" onClick={() => setShowCreateModal(true)}>
+            ➕ Tạo Ship Type Mới
+          </button>
         </div>
-
-        {loading ? (
-          <div className="loading">Đang tải danh sách ship types...</div>
-        ) : !Array.isArray(shipTypes) || shipTypes.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-icon">⚓</div>
-            <h3>Chưa có ship type nào</h3>
-            <p>Hãy tạo ship type đầu tiên!</p>
-            <button className="btn-primary" onClick={() => setShowCreateModal(true)}>
-              ➕ Tạo Ship Type Mới
-            </button>
-          </div>
-        ) : (
-          <div className="ships-grid">
-            {shipTypes.map((ship, index) => (
+      ) : (
+        <div className="ships-grid">
+          {shipTypes.map((ship, index) => (
               <div key={ship.shipTypeId || index} className="ship-card">
                 <div className="ship-card-header">
-                  <div className="ship-icon">🚢</div>
+                  <div className="ship-icon"><Ship size={32} /></div>
                   <div className="ship-info">
                     <h3>{ship.shipName}</h3>
-                    <div className="ship-details">
-                      <p className="ship-detail">
-                        📏 Size: <strong>{ship.size}</strong>
-                      </p>
-                    </div>
+                    <span className="ship-size-badge">Size: {ship.size} cells</span>
                   </div>
                 </div>
-                <div className="ship-actions">
-                  <button 
-                    className="btn-icon btn-view"
-                    title="Xem chi tiết"
-                    onClick={() => handleViewDetail(ship.shipTypeId)}
-                  >
-                    👁️
-                  </button>
-                  <button 
-                    className="btn-icon btn-edit"
-                    title="Chỉnh sửa"
-                    onClick={() => handleEditClick(ship)}
-                  >
-                    ✏️
-                  </button>
-                  <button 
-                    className="btn-icon btn-delete"
-                    title="Xóa"
-                    onClick={() => handleDeleteShip(ship.shipTypeId)}
-                  >
-                    🗑️
-                  </button>
+                <div className="ship-card-body">
+                  <p className="ship-description">
+                    {ship.description || getShipDescription(ship.shipName)}
+                  </p>
                 </div>
               </div>
             ))}
           </div>
-        )}
-      </div>
+        )
+      }
 
       {/* Modal Chi tiết Ship */}
       {showDetailModal && (

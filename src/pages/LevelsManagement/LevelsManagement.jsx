@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getAdminLevels, getLevelById, createLevel, updateLevel, deleteLevel, configureLevelShips, getShipTypes } from '../../api';
-import { Grid3x3, Clock, Plus, Ship, Anchor, Package, CheckCircle2, Tag, Edit3, Map, Info } from 'lucide-react';
+import { Grid3x3, Clock, Plus, Ship, Anchor, Package, CheckCircle2, Tag, Edit3, Map, Info, AlertTriangle, Trash2 } from 'lucide-react';
 import './LevelsManagement.css';
 
 function LevelsManagement() {
@@ -11,6 +11,7 @@ function LevelsManagement() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showShipConfigModal, setShowShipConfigModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [loadingSubmit, setLoadingSubmit] = useState(false);
@@ -126,17 +127,25 @@ function LevelsManagement() {
     }
   };
 
-  const _handleDeleteLevel = async (levelId) => {
-    if (window.confirm('Bạn có chắc muốn xóa level này?')) {
-      try {
-        await deleteLevel(levelId);
-        setSuccess('Đã xóa level thành công!');
-        setTimeout(() => setSuccess(null), 3000);
-        await fetchLevels();
-      } catch {
-        setError('Không thể xóa level. Vui lòng thử lại.');
-        setTimeout(() => setError(null), 3000);
-      }
+  const handleDeleteClick = (level) => {
+    setSelectedLevel(level);
+    setShowDeleteModal(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    try {
+      const levelId = selectedLevel.levelId || selectedLevel.id;
+      await deleteLevel(levelId);
+      setSuccess('Level deleted successfully! 🎉');
+      setShowDeleteModal(false);
+      setSelectedLevel(null);
+      await fetchLevels();
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      console.error('Delete level error:', err);
+      setError(err.response?.data?.message || 'Cannot delete level. Please try again.');
+      setShowDeleteModal(false);
+      setTimeout(() => setError(null), 3000);
     }
   };
 
@@ -311,12 +320,23 @@ function LevelsManagement() {
                       className="btn-level-edit"
                       onClick={() => handleEditClick(level)}
                     >
+                      <Edit3 size={16} />
                       Edit
                     </button>
+                    <button 
+                      className="btn-level-delete"
+                      onClick={() => handleDeleteClick(level)}
+                    >
+                      <Trash2 size={16} />
+                      Delete
+                    </button>
+                  </div>
+                  <div>
                     <button 
                       className="btn-level-configure"
                       onClick={() => handleOpenShipConfig(level)}
                     >
+                      <Ship size={16} />
                       Configure Ships
                     </button>
                   </div>
@@ -326,6 +346,66 @@ function LevelsManagement() {
           </div>
         )
       }
+
+      {/* Modal Delete Confirmation */}
+      {showDeleteModal && selectedLevel && (
+        <div className="modal-overlay" onClick={() => setShowDeleteModal(false)}>
+          <div className="modal-content modal-confirm" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div className="modal-title-with-icon">
+                <AlertTriangle size={24} className="modal-title-icon delete" />
+                <h2>Confirm Delete Level</h2>
+              </div>
+              <button className="modal-close" onClick={() => setShowDeleteModal(false)}>✕</button>
+            </div>
+
+            <div className="modal-body">
+              <div className="confirm-message">
+                <p className="confirm-text">
+                  Are you sure you want to delete <strong>"{selectedLevel.levelName}"</strong>?
+                </p>
+                <p className="confirm-warning">
+                  This action cannot be undone. All configurations and ship assignments for this level will be permanently removed.
+                </p>
+              </div>
+
+              <div className="level-preview">
+                <div className="level-preview-icon">
+                  <Map size={24} />
+                </div>
+                <div className="level-preview-info">
+                  <div className="preview-name">{selectedLevel.levelName}</div>
+                  <div className="preview-details">
+                    <span>Board: {selectedLevel.boardSize}x{selectedLevel.boardSize}</span>
+                    <span>•</span>
+                    <span>Time: {selectedLevel.timeLimit}s</span>
+                    <span>•</span>
+                    <span>Ships: {selectedLevel.totalShips || 0}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="modal-footer">
+              <button 
+                type="button" 
+                className="btn-secondary" 
+                onClick={() => setShowDeleteModal(false)}
+              >
+                Cancel
+              </button>
+              <button 
+                type="button" 
+                className="btn-danger"
+                onClick={handleConfirmDelete}
+              >
+                <Trash2 size={16} />
+                Delete Level
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal Chi tiết Level */}
       {showDetailModal && (

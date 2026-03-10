@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom'
-import { LayoutDashboard, Users, Gamepad2, Ship, Monitor } from 'lucide-react'
+import { LayoutDashboard, Users, Gamepad2, Ship, Monitor, LogOut } from 'lucide-react'
+import { logout } from '../api'
 import './Sidebar.css'
 
 function Sidebar({ isOpen }) {
@@ -7,6 +8,10 @@ function Sidebar({ isOpen }) {
 
   const isActive = (path) => {
     return location.pathname === path ? 'active' : ''
+  }
+
+  const handleLogout = () => {
+    logout()
   }
 
   return (
@@ -63,6 +68,10 @@ function Sidebar({ isOpen }) {
             <div className="user-email">admin@battleship.vr</div>
           </div>
         </div>
+        <button className="logout-btn" onClick={handleLogout}>
+          <LogOut size={18} />
+          <span>Logout</span>
+        </button>
       </div>
     </aside>
   )

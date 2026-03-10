@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { login, register } from '../../api';
+import  { Ship } from 'lucide-react';
 import './Login.css';
 
 function Login() {
@@ -149,23 +150,20 @@ function Login() {
       <div className="login-card">
         <div className="login-header">
           <div className="logo">
-            <span className="logo-icon">⚓</span>
-            <h1>Fleet Battle</h1>
+            <Ship size={32} strokeWidth={2} />
+            <h1>Battleship VR</h1>
           </div>
-          <p className="subtitle">{isRegisterMode ? 'Đăng ký tài khoản' : 'Admin Dashboard'}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="login-form">
           {error && (
             <div className="alert alert-error">
-              <span className="alert-icon">⚠️</span>
               {error}
             </div>
           )}
 
           <div className="form-group">
             <label htmlFor="username">
-              <span className="label-icon">👤</span>
               Username
             </label>
             <input
@@ -183,7 +181,6 @@ function Login() {
 
           <div className="form-group">
             <label htmlFor="password">
-              <span className="label-icon">🔒</span>
               Password
             </label>
             <div className="password-input-wrapper">
@@ -203,7 +200,6 @@ function Login() {
                 onClick={() => setShowPassword(!showPassword)}
                 tabIndex={-1}
               >
-                {showPassword ? '👁️' : '👁️‍🗨️'}
               </button>
             </div>
           </div>
@@ -227,7 +223,7 @@ function Login() {
             </div>
           )}
 
-          {!isRegisterMode && (
+          {/* {!isRegisterMode && (
             <div className="form-options">
               <label className="checkbox-label">
                 <input type="checkbox" />
@@ -235,7 +231,7 @@ function Login() {
               </label>
               <a href="#" className="forgot-password">Quên mật khẩu?</a>
             </div>
-          )}
+          )} */}
 
           <button 
             type="submit" 

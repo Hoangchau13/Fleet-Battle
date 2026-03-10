@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard/Dashboard'
 import LevelsManagement from './pages/LevelsManagement/LevelsManagement'
 import ShipsManagement from './pages/ShipsManagement/ShipsManagement'
 import UsersManagement from './pages/UsersManagement/UsersManagement'
+import UserDetail from './pages/UsersManagement/UserDetail'
 import GamesManagement from './pages/GamesManagement/GamesManagement'
 
 function AdminLayout({ isSidebarOpen, toggleSidebar }) {
@@ -22,6 +23,7 @@ function AdminLayout({ isSidebarOpen, toggleSidebar }) {
             <Route path="/levels" element={<LevelsManagement />} />
             <Route path="/ships" element={<ShipsManagement />} />
             <Route path="/users" element={<UsersManagement />} />
+            <Route path="/users/:id" element={<UserDetail />} />
             <Route path="/games" element={<GamesManagement />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

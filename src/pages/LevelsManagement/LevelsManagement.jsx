@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getAdminLevels, getLevelById, createLevel, updateLevel, deleteLevel, configureLevelShips, getShipTypes } from '../../api';
-import { Grid3x3, Clock, Settings, Plus } from 'lucide-react';
+import { Grid3x3, Clock, Plus, Ship, Anchor, Package, CheckCircle2, Tag, Edit3, Map, Info } from 'lucide-react';
 import './LevelsManagement.css';
 
 function LevelsManagement() {
@@ -54,7 +54,7 @@ function LevelsManagement() {
     }
   };
 
-  const handleViewDetail = async (levelId) => {
+  const _handleViewDetail = async (levelId) => {
     try {
       setLoadingDetail(true);
       setShowDetailModal(true);
@@ -126,14 +126,14 @@ function LevelsManagement() {
     }
   };
 
-  const handleDeleteLevel = async (levelId) => {
+  const _handleDeleteLevel = async (levelId) => {
     if (window.confirm('Bạn có chắc muốn xóa level này?')) {
       try {
         await deleteLevel(levelId);
         setSuccess('Đã xóa level thành công!');
         setTimeout(() => setSuccess(null), 3000);
         await fetchLevels();
-      } catch (err) {
+      } catch {
         setError('Không thể xóa level. Vui lòng thử lại.');
         setTimeout(() => setError(null), 3000);
       }
@@ -174,16 +174,23 @@ function LevelsManagement() {
     setShowShipConfigModal(true);
     setError(null);
     
-    // Fetch ship types if not loaded
-    if (shipTypes.length === 0) {
-      await fetchShipTypes();
-    } else {
-      // Reset config data when opening
-      const initialConfig = shipTypes.map(ship => ({
-        shipTypeId: ship.shipTypeId || ship.id || 0,
-        quantity: 0
-      }));
-      setShipConfigData(initialConfig);
+    // Fetch ship types
+    await fetchShipTypes();
+    
+    // Pre-fill existing configuration if available
+    if (level.ships && level.ships.length > 0) {
+      // Map existing ships to config data
+      const existingConfig = shipTypes.map(ship => {
+        const shipId = ship.shipTypeId || ship.id;
+        const existingShip = level.ships.find(s => 
+          (s.shipTypeId || s.id) === shipId
+        );
+        return {
+          shipTypeId: shipId,
+          quantity: existingShip ? (existingShip.quantity || 0) : 0
+        };
+      });
+      setShipConfigData(existingConfig);
     }
   };
 
@@ -209,20 +216,21 @@ function LevelsManagement() {
       const shipsToSend = shipConfigData.filter(item => item.quantity > 0);
       
       if (shipsToSend.length === 0) {
-        setError('Vui lòng chọn ít nhất một loại tàu với số lượng > 0');
+        setError('Please select at least one ship type with quantity > 0');
+        setLoadingSubmit(false);
         return;
       }
       
       console.log('Sending ship config:', shipsToSend);
       await configureLevelShips(levelId, shipsToSend);
       
-      setSuccess('Cấu hình tàu thành công! 🎉');
+      setSuccess('Ships configured successfully! 🎉');
       setTimeout(() => setSuccess(null), 3000);
       setShowShipConfigModal(false);
       await fetchLevels();
     } catch (err) {
       console.error('Configure ships error:', err);
-      setError(err.response?.data?.message || 'Không thể cấu hình tàu. Vui lòng thử lại.');
+      setError(err.response?.data?.message || 'Cannot configure ships. Please try again.');
     } finally {
       setLoadingSubmit(false);
     }
@@ -268,12 +276,11 @@ function LevelsManagement() {
         <div className="levels-grid">
           {levels.map((level, index) => {
             const levelNumber = index + 1;
-            const shipsCount = level.ships?.length || 0;
               
               return (
                 <div key={level.levelId} className="level-card">
                   <div className="level-header">
-                    <h3 className="level-title">{level.name}</h3>
+                    <h3 className="level-title">{level.levelName}</h3>
                     <span className="level-badge">Level {levelNumber}</span>
                   </div>
                   
@@ -293,9 +300,9 @@ function LevelsManagement() {
                       <span className="stat-value">{level.timeLimit}s per turn</span>
                     </div>
                     <div className="level-stat-row">
-                      <Settings size={20} className="stat-icon" />
+                      <Ship size={20} className="stat-icon" />
                       <span className="stat-label">Ships Configured</span>
-                      <span className="stat-value">{shipsCount} types</span>
+                      <span className="stat-value">{level.totalShips} ships</span>
                     </div>
                   </div>
                   
@@ -325,7 +332,10 @@ function LevelsManagement() {
         <div className="modal-overlay" onClick={() => setShowDetailModal(false)}>
           <div className="modal-content modal-detail" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>🗺️ Chi tiết Level</h2>
+              <div className="modal-title-with-icon">
+                <Map size={24} className="modal-title-icon" />
+                <h2>Chi tiết Level</h2>
+              </div>
               <button className="modal-close" onClick={() => setShowDetailModal(false)}>✕</button>
             </div>
             <div className="modal-body">
@@ -338,7 +348,10 @@ function LevelsManagement() {
                 <div className="level-detail-content">
                   {/* Thông tin cơ bản */}
                   <div className="detail-section">
-                    <h3 className="section-title">📋 Thông tin cơ bản</h3>
+                    <h3 className="section-title">
+                      <Info size={18} />
+                      Thông tin cơ bản
+                    </h3>
                     <div className="detail-grid">
                       <div className="detail-item">
                         <span className="detail-label">Level ID:</span>
@@ -375,13 +388,18 @@ function LevelsManagement() {
                   {/* Cấu hình tàu */}
                   {selectedLevel.ships && selectedLevel.ships.length > 0 && (
                     <div className="detail-section">
-                      <h3 className="section-title">⚓ Cấu hình Tàu</h3>
+                      <h3 className="section-title">
+                        <Anchor size={18} />
+                        Cấu hình Tàu
+                      </h3>
                       <div className="ships-list">
                         {selectedLevel.ships.map((ship, index) => (
                           <div key={index} className="ship-item">
-                            <div className="ship-icon">🚢</div>
+                            <div className="ship-icon">
+                              <Anchor size={20} />
+                            </div>
                             <div className="ship-info">
-                              <div className="ship-name">{ship.shipTypeName || `Ship ${index + 1}`}</div>
+                              <div className="ship-name">{ship.shipName || ship.shipTypeName || `Ship ${index + 1}`}</div>
                               <div className="ship-details">
                                 <span className="ship-badge">Size: {ship.size || 'N/A'}</span>
                                 <span className="ship-badge">Quantity: {ship.quantity || 0}</span>
@@ -427,7 +445,10 @@ function LevelsManagement() {
         <div className="modal-overlay" onClick={() => setShowCreateModal(false)}>
           <div className="modal-content modal-form" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>➕ Tạo Level Mới</h2>
+              <div className="modal-title-with-icon">
+                <Plus size={24} className="modal-title-icon create" />
+                <h2>Tạo Level Mới</h2>
+              </div>
               <button className="modal-close" onClick={() => setShowCreateModal(false)}>✕</button>
             </div>
 
@@ -436,7 +457,7 @@ function LevelsManagement() {
                 <div className="form-section">
                   <div className="form-group">
                     <label htmlFor="levelName">
-                      <span className="label-icon">🏷️</span>
+                      <Tag size={18} className="label-icon" />
                       Level Name
                       <span className="required">*</span>
                     </label>
@@ -455,7 +476,7 @@ function LevelsManagement() {
 
                   <div className="form-group">
                     <label htmlFor="boardSize">
-                      <span className="label-icon">📏</span>
+                      <Grid3x3 size={18} className="label-icon" />
                       Board Size
                       <span className="required">*</span>
                     </label>
@@ -476,7 +497,7 @@ function LevelsManagement() {
 
                   <div className="form-group">
                     <label htmlFor="timeLimit">
-                      <span className="label-icon">⏱️</span>
+                      <Clock size={18} className="label-icon" />
                       Time Limit (giây)
                       <span className="required">*</span>
                     </label>
@@ -531,7 +552,10 @@ function LevelsManagement() {
         <div className="modal-overlay" onClick={() => setShowEditModal(false)}>
           <div className="modal-content modal-form" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>✏️ Cập nhật Level</h2>
+              <div className="modal-title-with-icon">
+                <Edit3 size={24} className="modal-title-icon edit" />
+                <h2>Cập nhật Level</h2>
+              </div>
               <button className="modal-close" onClick={() => setShowEditModal(false)}>✕</button>
             </div>
 
@@ -539,7 +563,10 @@ function LevelsManagement() {
               <div className="modal-body">
                 {/* Thông tin Level hiện tại */}
                 <div className="info-box">
-                  <h4>📌 Level hiện tại:</h4>
+                  <div className="info-box-header">
+                    <Info size={18} />
+                    <h4>Level hiện tại:</h4>
+                  </div>
                   <p><strong>Level ID:</strong> {selectedLevel.levelId || selectedLevel.id}</p>
                   <p><strong>Level Name:</strong> {selectedLevel.levelName || selectedLevel.name || 'N/A'}</p>
                 </div>
@@ -547,7 +574,7 @@ function LevelsManagement() {
                 <div className="form-section">
                   <div className="form-group">
                     <label htmlFor="editBoardSize">
-                      <span className="label-icon">📏</span>
+                      <Grid3x3 size={18} className="label-icon" />
                       Board Size
                       <span className="required">*</span>
                     </label>
@@ -568,7 +595,7 @@ function LevelsManagement() {
 
                   <div className="form-group">
                     <label htmlFor="editTimeLimit">
-                      <span className="label-icon">⏱️</span>
+                      <Clock size={18} className="label-icon" />
                       Time Limit (giây)
                       <span className="required">*</span>
                     </label>
@@ -626,7 +653,10 @@ function LevelsManagement() {
         }}>
           <div className="modal-content modal-ship-config" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>⚓ Cấu hình Tàu cho Level</h2>
+              <div className="modal-title-with-icon">
+                <Ship size={24} className="modal-title-icon" />
+                <h2>Configure Ships for Level</h2>
+              </div>
               <button className="modal-close" onClick={() => {
                 setShowShipConfigModal(false);
                 setError(null);
@@ -651,53 +681,111 @@ function LevelsManagement() {
 
                 {/* Level Info */}
                 <div className="info-box">
-                  <h4>📌 Level:</h4>
-                  <p><strong>Level ID:</strong> {selectedLevel.levelId || selectedLevel.id}</p>
-                  <p><strong>Level Name:</strong> {selectedLevel.levelName || selectedLevel.name || 'N/A'}</p>
+                  <div className="info-box-header">
+                    <Info size={18} />
+                    <h4>Level Information:</h4>
+                  </div>
+                  <div className="info-grid">
+                    <div className="info-item">
+                      <span className="info-label">Level Name:</span>
+                      <span className="info-value">{selectedLevel.levelName || selectedLevel.name || 'N/A'}</span>
+                    </div>
+                    <div className="info-item">
+                      <span className="info-label">Board Size:</span>
+                      <span className="info-value">{selectedLevel.boardSize}x{selectedLevel.boardSize}</span>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Ship Types List */}
                 <div className="ship-config-section">
-                  <h4>🚢 Chọn loại tàu và số lượng:</h4>
+                  <div className="section-header">
+                    <div className="section-title-with-icon">
+                      <Package size={18} />
+                      <h4>Select Ship Types and Quantities</h4>
+                    </div>
+                    <p className="section-hint">Choose the number of each ship type for this level</p>
+                  </div>
                   {loadingShipTypes ? (
-                    <div className="loading">Đang tải danh sách tàu...</div>
+                    <div className="loading-state">
+                      <div className="spinner-large"></div>
+                      <p>Loading ship types...</p>
+                    </div>
                   ) : shipTypes.length === 0 ? (
                     <div className="empty-state">
-                      <p>Không có loại tàu nào</p>
+                      <Ship size={48} className="empty-icon-svg" strokeWidth={1.5} />
+                      <h3>No Ship Types Available</h3>
+                      <p>Please add ship types before configuring levels</p>
                     </div>
                   ) : (
-                    <div className="ship-config-grid">
-                      {shipTypes.map((shipType, index) => {
-                        const shipId = shipType.shipTypeId || shipType.id;
-                        const shipName = shipType.shipTypeName || shipType.name || `Ship ${index + 1}`;
-                        const shipSize = shipType.size || 'N/A';
-                        const configItem = shipConfigData.find(item => item.shipTypeId === shipId);
-                        
-                        return (
-                          <div key={shipId || index} className="ship-config-item">
-                            <div className="ship-config-info">
-                              <div className="ship-config-icon">🚢</div>
-                              <div className="ship-config-details">
-                                <h5>{shipName}</h5>
-                                <p className="ship-size">Size: {shipSize} ô</p>
+                    <>
+                      <div className="ship-config-grid">
+                        {shipTypes.map((shipType, index) => {
+                          const shipId = shipType.shipTypeId || shipType.id;
+                          const shipName = shipType.shipName || shipType.name || `Ship ${index + 1}`;
+                          const shipSize = shipType.size || 'N/A';
+                          const configItem = shipConfigData.find(item => item.shipTypeId === shipId);
+                          const quantity = configItem?.quantity || 0;
+                          
+                          return (
+                            <div 
+                              key={shipId || index} 
+                              className={`ship-config-item ${quantity > 0 ? 'selected' : ''}`}
+                            >
+                              <div className="ship-config-info">
+                                <div className="ship-config-icon">
+                                  <Anchor size={28} strokeWidth={2} className="ship-icon-svg" />
+                                  {quantity > 0 && (
+                                    <span className="quantity-badge">{quantity}</span>
+                                  )}
+                                </div>
+                                <div className="ship-config-details">
+                                  <h5>{shipName}</h5>
+                                  <p className="ship-size">Size: {shipSize} cells</p>
+                                </div>
+                              </div>
+                              <div className="ship-config-quantity">
+                                <label htmlFor={`quantity-${shipId}`}>Quantity:</label>
+                                <input
+                                  type="number"
+                                  id={`quantity-${shipId}`}
+                                  min="0"
+                                  max="10"
+                                  value={quantity}
+                                  onChange={(e) => handleShipQuantityChange(shipId, e.target.value)}
+                                  disabled={loadingSubmit}
+                                  className={quantity > 0 ? 'has-value' : ''}
+                                />
                               </div>
                             </div>
-                            <div className="ship-config-quantity">
-                              <label htmlFor={`quantity-${shipId}`}>Số lượng:</label>
-                              <input
-                                type="number"
-                                id={`quantity-${shipId}`}
-                                min="0"
-                                max="10"
-                                value={configItem?.quantity || 0}
-                                onChange={(e) => handleShipQuantityChange(shipId, e.target.value)}
-                                disabled={loadingSubmit}
-                              />
+                          );
+                        })}
+                      </div>
+                      
+                      {/* Summary */}
+                      {shipConfigData.some(item => item.quantity > 0) && (
+                        <div className="ship-config-summary">
+                          <div className="summary-header">
+                            <CheckCircle2 size={20} />
+                            <h4>Configuration Summary</h4>
+                          </div>
+                          <div className="summary-stats">
+                            <div className="summary-item">
+                              <span className="summary-label">Total Ships:</span>
+                              <span className="summary-value">
+                                {shipConfigData.reduce((sum, item) => sum + (item.quantity || 0), 0)} ships
+                              </span>
+                            </div>
+                            <div className="summary-item">
+                              <span className="summary-label">Ship Types:</span>
+                              <span className="summary-value">
+                                {shipConfigData.filter(item => item.quantity > 0).length} types
+                              </span>
                             </div>
                           </div>
-                        );
-                      })}
-                    </div>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
@@ -712,20 +800,20 @@ function LevelsManagement() {
                   }}
                   disabled={loadingSubmit}
                 >
-                  Hủy
+                  Cancel
                 </button>
                 <button 
                   type="submit" 
                   className="btn-primary"
-                  disabled={loadingSubmit || loadingShipTypes}
+                  disabled={loadingSubmit || loadingShipTypes || !shipConfigData.some(item => item.quantity > 0)}
                 >
                   {loadingSubmit ? (
                     <>
                       <span className="spinner-small"></span>
-                      Đang lưu...
+                      Saving...
                     </>
                   ) : (
-                    '💾 Lưu cấu hình'
+                    '💾 Save Configuration'
                   )}
                 </button>
               </div>

@@ -218,6 +218,17 @@
   max-width: 600px;
 }
 
+/* Override label-icon for SVG icons */
+.levels-management .label-icon {
+  color: #6b7280;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.levels-management .form-group:focus-within .label-icon {
+  color: #3b82f6;
+}
+
 .form-section {
   display: flex;
   flex-direction: column;
@@ -250,24 +261,30 @@
 
 .form-group input {
   padding: 12px 16px;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
   font-size: 14px;
   transition: all 0.2s ease;
   background-color: #fff;
   font-family: inherit;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+.form-group input:hover {
+  border-color: #cbd5e1;
 }
 
 .form-group input:focus {
   outline: none;
-  border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px rgba(117, 79, 254, 0.1);
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
 }
 
 .form-group input:disabled {
-  background-color: #f8f9fa;
+  background-color: #f9fafb;
   cursor: not-allowed;
-  opacity: 0.6;
+  opacity: 0.5;
+  border-color: #e5e7eb;
 }
 
 .form-hint {
@@ -328,11 +345,65 @@
 
 /* Ship Config Modal */
 .modal-ship-config {
-  max-width: 700px;
+  max-width: 720px;
+}
+
+.modal-title-with-icon {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.modal-title-icon {
+  color: #3b82f6;
+  animation: float 3s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+.modal-title-icon.create {
+  color: #10b981;
+}
+
+.modal-title-icon.edit {
+  color: #f59e0b;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-5px); }
 }
 
 .ship-config-section {
   margin-top: 24px;
+}
+
+.section-header {
+  margin-bottom: 20px;
+}
+
+.section-title-with-icon {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.section-title-with-icon svg {
+  color: #3b82f6;
+}
+
+.section-header h4 {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0;
+}
+
+.section-hint {
+  font-size: 13px;
+  color: #6b7280;
+  margin: 0;
+  padding-left: 28px;
 }
 
 .ship-config-section h4 {
@@ -345,7 +416,28 @@
 .ship-config-grid {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
+  max-height: 400px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.ship-config-grid::-webkit-scrollbar {
+  width: 6px;
+}
+
+.ship-config-grid::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.ship-config-grid::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+
+.ship-config-grid::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 .ship-config-item {
@@ -353,15 +445,21 @@
   align-items: center;
   justify-content: space-between;
   padding: 16px;
-  background: #f8f9fa;
-  border: 2px solid var(--border-color);
-  border-radius: var(--radius-md);
+  background: #fff;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
   transition: all 0.2s ease;
 }
 
 .ship-config-item:hover {
-  border-color: var(--primary-color);
-  box-shadow: 0 2px 8px rgba(117, 79, 254, 0.1);
+  border-color: #3b82f6;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
+  transform: translateY(-1px);
+}
+
+.ship-config-item.selected {
+  border-color: #3b82f6;
+  background: linear-gradient(135deg, rgba(137, 145, 158, 0.05), rgba(37, 99, 235, 0.03));
 }
 
 .ship-config-info {
@@ -372,26 +470,69 @@
 }
 
 .ship-config-icon {
-  font-size: 32px;
-  width: 48px;
-  height: 48px;
+  width: 56px;
+  height: 56px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(117, 79, 254, 0.1);
-  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, #dbeafe, #eff6ff);
+  border-radius: 12px;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.ship-config-item:hover .ship-config-icon {
+  transform: scale(1.05);
+}
+
+.ship-config-item.selected .ship-config-icon {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.ship-icon-svg {
+  color: #3b82f6;
+  transition: all 0.3s ease;
+}
+
+.ship-config-item.selected .ship-icon-svg {
+  color: white;
+  transform: rotate(5deg);
+}
+
+.empty-icon-svg {
+  color: #9ca3af;
+  margin-bottom: 16px;
+}
+
+.quantity-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: #ef4444;
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .ship-config-details h5 {
   font-size: 15px;
   font-weight: 700;
-  color: var(--text-primary);
+  color: #1f2937;
   margin: 0 0 4px 0;
 }
 
 .ship-config-details .ship-size {
   font-size: 13px;
-  color: var(--text-secondary);
+  color: #6b7280;
   margin: 0;
 }
 
@@ -402,65 +543,182 @@
 }
 
 .ship-config-quantity label {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
-  color: var(--text-secondary);
+  color: #6b7280;
   white-space: nowrap;
 }
 
 .ship-config-quantity input {
   width: 80px;
-  padding: 8px 12px;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  font-size: 14px;
+  padding: 10px 12px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 15px;
   font-weight: 600;
   text-align: center;
   transition: all 0.2s ease;
+  background: white;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
 }
 
 .ship-config-quantity input:focus {
   outline: none;
-  border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px rgba(117, 79, 254, 0.1);
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+}
+
+.ship-config-quantity input.has-value {
+  border-color: #10b981;
+  color: #059669;
+  background: #f0fdf4;
 }
 
 .ship-config-quantity input:disabled {
-  background-color: #f0f0f0;
+  background-color: #f9fafb;
   cursor: not-allowed;
-  opacity: 0.6;
+  opacity: 0.5;
 }
 
 .ship-config-summary {
-  margin-top: 24px;
-  padding: 16px 20px;
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.05), rgba(37, 99, 235, 0.05));
-  border: 1px solid rgba(59, 130, 246, 0.2);
-  border-radius: var(--radius-md);
+  margin-top: 20px;
+  padding: 20px;
+  background: linear-gradient(135deg, #ecfdf5, #f0fdf4);
+  border: 2px solid #86efac;
+  border-radius: 12px;
+  animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.summary-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.summary-header svg {
+  color: #10b981;
 }
 
 .ship-config-summary h4 {
   font-size: 14px;
   font-weight: 700;
-  color: var(--text-primary);
-  margin: 0 0 12px 0;
-}
-
-.ship-config-summary ul {
+  color: #065f46;
   margin: 0;
-  padding-left: 20px;
-  list-style: none;
 }
 
-.ship-config-summary li {
-  font-size: 14px;
-  color: var(--text-primary);
-  margin-bottom: 8px;
+.summary-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
 }
 
-.ship-config-summary strong {
-  color: var(--primary-color);
+.summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.summary-label {
+  font-size: 12px;
+  color: #059669;
   font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.summary-value {
+  font-size: 18px;
+  color: #065f46;
+  font-weight: 700;
+}
+
+.info-box {
+  background: linear-gradient(135deg, #eff6ff, #dbeafe);
+  border: 2px solid #93c5fd;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.info-box-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.info-box-header svg {
+  color: #3b82f6;
+  flex-shrink: 0;
+}
+
+.info-box h4 {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1e40af;
+  margin: 0;
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.info-label {
+  font-size: 12px;
+  color: #3b82f6;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.info-value {
+  font-size: 15px;
+  color: #1e3a8a;
+  font-weight: 700;
+}
+
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  gap: 16px;
+}
+
+.spinner-large {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #e5e7eb;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.loading-state p {
+  color: #6b7280;
+  font-size: 14px;
+  margin: 0;
 }
 
 /* Modal Detail Styles */
@@ -487,9 +745,14 @@
   margin: 0 0 16px 0;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   padding-bottom: 12px;
   border-bottom: 2px solid var(--border-color);
+}
+
+.section-title svg {
+  color: #3b82f6;
+  flex-shrink: 0;
 }
 
 .detail-grid {
@@ -548,27 +811,40 @@
   align-items: center;
   gap: 16px;
   padding: 16px;
-  background: linear-gradient(135deg, rgba(117, 79, 254, 0.05), rgba(168, 85, 247, 0.03));
-  border: 1px solid rgba(117, 79, 254, 0.15);
-  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.05), rgba(37, 99, 235, 0.03));
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
   transition: all 0.2s ease;
 }
 
 .ship-item:hover {
   transform: translateX(4px);
-  border-color: var(--primary-color);
-  box-shadow: 0 2px 8px rgba(117, 79, 254, 0.15);
+  border-color: #3b82f6;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
 }
 
 .ship-icon {
-  font-size: 32px;
   width: 48px;
   height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(117, 79, 254, 0.1);
+  background: linear-gradient(135deg, #dbeafe, #eff6ff);
   border-radius: var(--radius-md);
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.ship-icon svg {
+  color: #3b82f6;
+}
+
+.ship-item:hover .ship-icon {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+}
+
+.ship-item:hover .ship-icon svg {
+  color: white;
 }
 
 .ship-info {
@@ -592,10 +868,11 @@
 .ship-badge {
   font-size: 12px;
   padding: 4px 10px;
-  background: rgba(117, 79, 254, 0.1);
-  color: var(--primary-color);
+  background: #dbeafe;
+  color: #1e40af;
   border-radius: 12px;
   font-weight: 600;
+  border: 1px solid #93c5fd;
 }
 
 /* Debug Section */

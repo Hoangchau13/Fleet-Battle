@@ -21,17 +21,6 @@ function ShipsManagement() {
     modelCode: ''
   });
 
-  const getShipDescription = (shipName) => {
-    const descriptions = {
-      'Aircraft Carrier': 'The largest and most powerful ship in your fleet',
-      'Battleship': 'Heavy armored vessel with powerful weapons',
-      'Cruiser': 'Fast and versatile mid-size warship',
-      'Submarine': 'Stealthy underwater combat vessel',
-      'Destroyer': 'Quick attack ship designed for anti-submarine warfare'
-    };
-    return descriptions[shipName] || 'A naval combat vessel';
-  };
-
   useEffect(() => {
     fetchShipTypes();
   }, []);
@@ -60,7 +49,7 @@ function ShipsManagement() {
     }
   };
 
-  const handleViewDetail = async (shipTypeId) => {
+  const _handleViewDetail = async (shipTypeId) => {
     try {
       setLoadingDetail(true);
       setShowDetailModal(true);
@@ -146,7 +135,7 @@ function ShipsManagement() {
     }
   };
 
-  const handleDeleteShip = async (shipTypeId) => {
+  const _handleDeleteShip = async (shipTypeId) => {
     if (window.confirm('Bạn có chắc muốn xóa ship type này?')) {
       try {
         await deleteShipType(shipTypeId);
@@ -204,9 +193,10 @@ function ShipsManagement() {
                   </div>
                 </div>
                 <div className="ship-card-body">
-                  <p className="ship-description">
-                    {ship.description || getShipDescription(ship.shipName)}
-                  </p>
+                  <div className="ship-model-code">
+                    <span className="model-label">Model Code:</span>
+                    <span className="model-value">{ship.modelCode}</span>
+                  </div>
                 </div>
               </div>
             ))}

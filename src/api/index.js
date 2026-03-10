@@ -10,6 +10,7 @@ export * from './userApi';
 export * from './levelApi';
 export * from './shipApi';
 export * from './healthApi';
+export * from './dashboardApi';
 
 // Export axios instance nếu cần sử dụng trực tiếp
 export { default as apiClient } from './axios.config';

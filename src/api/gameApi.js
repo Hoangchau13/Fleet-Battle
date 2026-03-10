@@ -24,3 +24,14 @@ export const getGameConfig = async (levelId) => {
     throw error;
   }
 };
+
+// Lấy danh sách các trận đấu đang diễn ra (Live)
+export const getLiveMatches = async () => {
+  try {
+    const response = await apiClient.get('/match/live');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching live matches:', error);
+    throw error;
+  }
+};

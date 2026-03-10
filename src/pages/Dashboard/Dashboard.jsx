@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Users, Activity, Trophy, Gamepad2 } from 'lucide-react'
 import StatCard from '../../components/StatCard'
-import { getUsers, getAdminLevels } from '../../api'
+import { getAdminOverview } from '../../api'
 import './Dashboard.css'
 
 function Dashboard() {
@@ -26,72 +26,42 @@ function Dashboard() {
     try {
       setLoading(true)
 
-      // Fetch data từ các API
-      const [usersData, levelsData] = await Promise.all([
-        getUsers().catch(() => []),
-        getAdminLevels().catch(() => [])
-      ])
+      // Fetch data from admin overview API
+      const data = await getAdminOverview()
 
-      // Process users data
-      const usersArray = Array.isArray(usersData) ? usersData : (usersData?.data || usersData?.users || [])
-      
-      // Process levels data
-      const levelsArray = Array.isArray(levelsData) ? levelsData : (levelsData?.data || levelsData?.levels || [])
+      // Extract stats from nested structure
+      const statsData = data.stats || {}
 
-      // Tính toán stats (dữ liệu mẫu cho matches)
-      const totalUsers = usersArray.length
-      const userGrowth = totalUsers > 0 ? ((Math.random() * 5 + 10).toFixed(1)) : 0 // Mock growth percentage
-      
+      // Update stats from API response
       setStats({
-        totalUsers: totalUsers,
-        userGrowth: userGrowth,
-        activeMatches: Math.floor(Math.random() * 20 + 30), // Mock data: 30-50
-        matchesChange: Math.floor(Math.random() * 10 + 5), // Mock data: 5-15
-        totalMatches: Math.floor(totalUsers * 7), // Giả định mỗi user ~ 7 trận
-        matchesToday: Math.floor(Math.random() * 100 + 100), // Mock data: 100-200
-        totalLevels: levelsArray.length,
-        levelsUpdated: Math.min(3, levelsArray.length)
+        totalUsers: statsData.totalUsers || 0,
+        userGrowth: statsData.userGrowthPercentage || 0,
+        activeMatches: statsData.activeMatches || 0,
+        matchesChange: statsData.matchesChangeFromYesterday || 0,
+        totalMatches: statsData.totalMatches || 0,
+        matchesToday: statsData.matchesToday || 0,
+        totalLevels: statsData.gameLevels || 0,
+        levelsUpdated: statsData.levelsUpdatedRecently || 0
       })
 
-      // Mock recent matches data
-      const mockMatches = [
-        {
-          id: 1,
-          player1: 'Commander_X',
-          player2: 'Admiral_Y',
-          level: 5,
-          timeAgo: '15 min ago',
-          status: 'Playing'
-        },
-        {
-          id: 2,
-          player1: 'Captain_Z',
-          player2: 'Sailor_A',
-          level: 3,
-          timeAgo: '23 min ago',
-          status: 'Completed'
-        },
-        {
-          id: 3,
-          player1: 'Naval_B',
-          player2: 'Fleet_C',
-          level: 8,
-          timeAgo: '1 hour ago',
-          status: 'Playing'
-        },
-        {
-          id: 4,
-          player1: 'SeaWolf_D',
-          player2: 'Ocean_E',
-          level: 2,
-          timeAgo: '2 hours ago',
-          status: 'Completed'
-        }
-      ]
-      setRecentMatches(mockMatches)
+      // Update recent matches from API response
+      const matches = data.recentMatches || []
+      setRecentMatches(matches)
 
     } catch (error) {
       console.error('Error fetching dashboard data:', error)
+      // Set empty state on error
+      setStats({
+        totalUsers: 0,
+        userGrowth: 0,
+        activeMatches: 0,
+        matchesChange: 0,
+        totalMatches: 0,
+        matchesToday: 0,
+        totalLevels: 0,
+        levelsUpdated: 0
+      })
+      setRecentMatches([])
     } finally {
       setLoading(false)
     }
@@ -101,25 +71,21 @@ function Dashboard() {
     { 
       title: 'Total Users', 
       value: loading ? '...' : stats.totalUsers.toLocaleString(), 
-      completed: `+${stats.userGrowth}%`, 
       icon: Users
     },
     { 
       title: 'Active Matches', 
       value: loading ? '...' : stats.activeMatches.toString(), 
-      completed: `+${stats.matchesChange} from yesterday`, 
       icon: Activity
     },
     { 
       title: 'Total Matches', 
       value: loading ? '...' : stats.totalMatches.toLocaleString(), 
-      completed: `+${stats.matchesToday} today`, 
       icon: Trophy
     },
     { 
       title: 'Game Levels', 
       value: loading ? '...' : stats.totalLevels.toString(), 
-      completed: `${stats.levelsUpdated} updated recently`, 
       icon: Gamepad2
     },
   ]
@@ -140,9 +106,7 @@ function Dashboard() {
             key={index}
             title={stat.title}
             value={stat.value}
-            completed={stat.completed}
             icon={stat.icon}
-            iconColor={stat.iconColor}
           />
         ))}
       </div>
@@ -156,23 +120,23 @@ function Dashboard() {
           </div>
           <div className="card-body">
             {loading ? (
-              <div className="loading-state">Loading...</div>
+              <div className="dashboard-loading">Loading...</div>
             ) : recentMatches.length === 0 ? (
-              <div className="empty-state">No matches yet</div>
+              <div className="dashboard-empty">No matches yet</div>
             ) : (
               <div className="matches-list">
                 {recentMatches.map((match) => (
-                  <div key={match.id} className="match-item">
+                  <div key={match.gameId} className="match-item">
                     <div className="match-info">
                       <div className="match-players">
-                        {match.player1} vs {match.player2}
+                        {match.player1Name} vs {match.player2Name}
                       </div>
                       <div className="match-details">
-                        Level {match.level} • {match.timeAgo}
+                        Level {match.levelName} • {match.startTime && new Date(match.startTime).toLocaleString()}
                       </div>
                     </div>
                     <div className="match-status">
-                      <span className={`status-badge ${match.status.toLowerCase()}`}>
+                      <span className={`match-status-badge ${match.status.toLowerCase()}`}>
                         {match.status}
                       </span>
                     </div>

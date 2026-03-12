@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Ship, Plus, Anchor, Package, Edit3, Trash2, AlertTriangle } from 'lucide-react';
-import { getShipTypes, createShipType, updateShipType, deleteShipType } from '../../api';
+import { getShipTypes, createShipType, updateShipType, deleteShipType } from '../../../api';
 import './ShipsManagement.css';
 
 function ShipsManagement() {

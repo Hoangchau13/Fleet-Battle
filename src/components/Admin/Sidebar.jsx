@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom'
 import { LayoutDashboard, Users, Gamepad2, Ship, Monitor, LogOut } from 'lucide-react'
-import { logout } from '../api'
+import { logout } from '../../api'
 import './Sidebar.css'
 
 function Sidebar({ isOpen }) {

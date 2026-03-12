@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getAdminLevels, getLevelById, createLevel, updateLevel, deleteLevel, configureLevelShips, getShipTypes } from '../../api';
+import { getAdminLevels, getLevelById, createLevel, updateLevel, deleteLevel, configureLevelShips, getShipTypes } from '../../../api';
 import { Grid3x3, Clock, Plus, Ship, Anchor, Package, CheckCircle2, Tag, Edit3, Map, Info, AlertTriangle, Trash2 } from 'lucide-react';
 import './LevelsManagement.css';
 

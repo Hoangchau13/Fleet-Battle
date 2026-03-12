@@ -1,17 +1,18 @@
 import { useState, useEffect } from 'react'
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate} from 'react-router-dom'
 import './App.css'
-import Sidebar from './components/Sidebar'
-import ProtectedRoute from './components/ProtectedRoute'
+import Sidebar from './components/Admin/Sidebar'
+import ProtectedRoute from './components/Admin/ProtectedRoute'
 import Login from './pages/Login/Login'
-import Dashboard from './pages/Dashboard/Dashboard'
-import LevelsManagement from './pages/LevelsManagement/LevelsManagement'
-import ShipsManagement from './pages/ShipsManagement/ShipsManagement'
-import UsersManagement from './pages/UsersManagement/UsersManagement'
-import UserDetail from './pages/UsersManagement/UserDetail'
-import GamesManagement from './pages/GamesManagement/GamesManagement'
+import Dashboard from './pages/Admin/Dashboard/Dashboard'
+import LevelsManagement from './pages/Admin/LevelsManagement/LevelsManagement'
+import ShipsManagement from './pages/Admin/ShipsManagement/ShipsManagement'
+import UsersManagement from './pages/Admin/UsersManagement/UsersManagement'
+import UserDetail from './pages/Admin/UsersManagement/UserDetail'
+import GamesManagement from './pages/Admin/GamesManagement/GamesManagement'
+import HomePage from './pages/Players/HomePage/HomePage'
 
-function AdminLayout({ isSidebarOpen, toggleSidebar }) {
+function AdminLayout({ isSidebarOpen}) {
   return (
     <div className="dashboard">
       <Sidebar isOpen={isSidebarOpen} />

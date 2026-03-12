@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Users, Activity, Trophy, Gamepad2 } from 'lucide-react'
-import StatCard from '../../components/StatCard'
-import { getAdminOverview } from '../../api'
+import StatCard from '../../../components/Admin/StatCard'
+import { getAdminOverview } from '../../../api'
 import './Dashboard.css'
 
 function Dashboard() {

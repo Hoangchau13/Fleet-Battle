@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Star, TrendingUp, Trophy, Target, AlertCircle } from 'lucide-react';
 import './UserDetail.css';
-import { getUserById, updateUserStatus, updateUserRole, getRoles } from '../../api/userApi';
+import { getUserById, updateUserStatus, updateUserRole, getRoles } from '../../../api/userApi';
 
 /**
  * NOTE: Các API chưa có, đang hardcode data:

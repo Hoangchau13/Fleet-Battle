@@ -1,5 +1,5 @@
 import { Navigate } from 'react-router-dom';
-import { isAuthenticated } from '../api';
+import { isAuthenticated } from '../../api';
 
 function ProtectedRoute({ children }) {
   if (!isAuthenticated()) {

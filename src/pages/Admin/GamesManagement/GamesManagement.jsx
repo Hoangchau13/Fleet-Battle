@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getLiveMatches } from '../../api';
+import { getLiveMatches } from '../../../api';
 import { Target, Users, Clock, Eye } from 'lucide-react';
 import './GamesManagement.css';
 

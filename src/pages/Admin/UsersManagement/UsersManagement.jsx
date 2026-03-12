@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getUsers } from '../../api';
+import { getUsers } from '../../../api';
 import { Search, Eye } from 'lucide-react';
 import './UsersManagement.css';
 

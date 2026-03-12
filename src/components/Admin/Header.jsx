@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Ship, User, LogOut } from 'lucide-react'
-import { logout } from '../api'
+import { logout } from '../../api'
 import './Header.css'
 
 function Header({ toggleSidebar, hideToggle = false }) {

@@ -70,8 +70,8 @@ function Login() {
           
           // Redirect based on role
           if (user.role === 'Player') {
-            console.log('Redirecting to /home (Player)');
-            navigate('/home');
+            console.log('Redirecting to /server-selection (Player)');
+            navigate('/server-selection');
           } else {
             console.log('Redirecting to / (Admin)');
             // Admin, SuperAdmin, or other roles go to dashboard

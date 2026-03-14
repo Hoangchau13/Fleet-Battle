@@ -10,7 +10,17 @@ import ShipsManagement from './pages/Admin/ShipsManagement/ShipsManagement'
 import UsersManagement from './pages/Admin/UsersManagement/UsersManagement'
 import UserDetail from './pages/Admin/UsersManagement/UserDetail'
 import GamesManagement from './pages/Admin/GamesManagement/GamesManagement'
+import ServerSelection from './pages/Players/ServerSelection/ServerSelection'
+import CreatePlayer from './pages/Players/CreatePlayer/CreatePlayer'
 import HomePage from './pages/Players/HomePage/HomePage'
+import GameModes from './pages/Players/GameModes/GameModes'
+import Lobby from './pages/Players/Lobby/Lobby'
+import WaitingRoom from './pages/Players/WaitingRoom/WaitingRoom'
+import VRTransition from './pages/Players/VRTransition/VRTransition'
+import WatchMatch from './pages/Players/WatchMatch/WatchMatch'
+import ShipPlacement from './pages/Players/ShipPlacement/ShipPlacement'
+import BattleScreen from './pages/Players/BattleScreen/BattleScreen'
+import GameOver from './pages/Players/GameOver/GameOver'
 
 function AdminLayout({ isSidebarOpen}) {
   return (
@@ -99,9 +109,19 @@ function App() {
                 <div className="player-layout">
                   <div className="player-content">
                     <Routes>
-                      <Route path="/" element={<HomePage />} />
+                      <Route path="/" element={<ServerSelection />} />
+                      <Route path="/server-selection" element={<ServerSelection />} />
+                      <Route path="/create-player" element={<CreatePlayer />} />
                       <Route path="/home" element={<HomePage />} />
-                      <Route path="*" element={<Navigate to="/" replace />} />
+                      <Route path="/game-modes" element={<GameModes />} />
+                      <Route path="/lobby" element={<Lobby />} />
+                      <Route path="/waiting-room/:roomId" element={<WaitingRoom />} />
+                      <Route path="/vr-transition/:roomId" element={<VRTransition />} />
+                      <Route path="/watch-match/:roomId" element={<WatchMatch />} />
+                      <Route path="/ship-placement/:roomId" element={<ShipPlacement />} />
+                      <Route path="/battle/:roomId" element={<BattleScreen />} />
+                      <Route path="/game-over/:roomId" element={<GameOver />} />
+                      <Route path="*" element={<Navigate to="/server-selection" replace />} />
                     </Routes>
                   </div>
                 </div>

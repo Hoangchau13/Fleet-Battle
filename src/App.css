@@ -117,7 +117,6 @@
 
 .player-content {
   flex: 1;
-  padding: 32px;
   overflow-y: auto;
   overflow-x: hidden;
   max-width: 1600px;

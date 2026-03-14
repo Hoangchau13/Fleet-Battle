@@ -28,7 +28,33 @@ apiClient.interceptors.response.use(
   (response) => {
     return response;
   },
-  (error) => {
+  async (error) => {
+    const originalRequest = error.config;
+    const fallbackUrl = import.meta.env.VITE_API_FALLBACK_URL;
+
+    // Kiểm tra xem lỗi có phải do Network Error hoặc Server Error (>= 500) không
+    const isNetworkError = !error.response;
+    const isServerError = error.response && error.response.status >= 500;
+
+    // Nếu có lỗi và chưa từng thử lại (retry)
+    if ((isNetworkError || isServerError) && originalRequest && !originalRequest._retry) {
+      originalRequest._retry = true;
+
+      // Nếu có fallback URL và URL hiện tại đang khác fallback URL
+      if (fallbackUrl && originalRequest.baseURL !== fallbackUrl) {
+        console.warn(`[Fallback] Primary server failed. Switching to backup server: ${fallbackUrl}`);
+        
+        // Cập nhật baseURL cho request bị lỗi
+        originalRequest.baseURL = fallbackUrl;
+        
+        // Cập nhật baseURL mặc định của axio instance cho các request sau để tránh chậm trễ
+        apiClient.defaults.baseURL = fallbackUrl;
+
+        // Thực hiện lại request
+        return apiClient(originalRequest);
+      }
+    }
+
     if (error.response) {
       // Server trả về lỗi
       switch (error.response.status) {

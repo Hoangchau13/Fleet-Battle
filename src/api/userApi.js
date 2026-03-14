@@ -27,6 +27,17 @@ export const getUserById = async (userId) => {
   }
 };
 
+// Lấy danh sách Players của một User (Admin)
+export const getUserPlayers = async (userId) => {
+  try {
+    const response = await apiClient.get(`/admin/users/${userId}/players`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching user players:', error);
+    throw error;
+  }
+};
+
 // Tạo user mới (nếu cần)
 export const createUser = async (userData) => {
   try {

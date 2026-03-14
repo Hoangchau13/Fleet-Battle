@@ -33,7 +33,8 @@ export const createShipType = async (shipTypeData) => {
     const response = await apiClient.post('/game/shiptypes', {
       shipName: shipTypeData.shipName,
       size: parseInt(shipTypeData.size),
-      modelCode: shipTypeData.modelCode
+      modelCode: shipTypeData.modelCode,
+      shapePattern: shipTypeData.shapePattern
     });
     return response.data;
   } catch (error) {
@@ -48,7 +49,8 @@ export const updateShipType = async (shipTypeId, shipTypeData) => {
     const response = await apiClient.put(`/game/shiptypes/${shipTypeId}`, {
       shipName: shipTypeData.shipName,
       size: parseInt(shipTypeData.size),
-      modelCode: shipTypeData.modelCode
+      modelCode: shipTypeData.modelCode,
+      shapePattern: shipTypeData.shapePattern
     });
     return response.data;
   } catch (error) {

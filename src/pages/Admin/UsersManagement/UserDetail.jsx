@@ -1,22 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Star, TrendingUp, Trophy, Target, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Star, TrendingUp, Trophy, Target, AlertCircle, User, X, Loader2, Swords, ChevronRight, Flame, Clock } from 'lucide-react';
 import './UserDetail.css';
-import { getUserById, updateUserStatus, updateUserRole, getRoles } from '../../../api/userApi';
-
-/**
- * NOTE: Các API chưa có, đang hardcode data:
- * - GET /player/{id}/history - Lịch sử đấu (10 trận gần nhất)
- * - GET /player/{id} - Profile người chơi (Elo, Level, Wins/Losses, Win Rate)
- * 
- * Hiện tại đang lấy dữ liệu từ GET /admin/users/{id} 
- * và hardcode phần Match History
- */
+import { getUserById, updateUserStatus, updateUserRole, getRoles, getUserPlayers } from '../../../api/userApi';
+import { getPlayerProfile } from '../../../api/playerApi';
 
 function UserDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  
+
   const [user, setUser] = useState(null);
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -25,43 +17,27 @@ function UserDetail() {
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [updatingRole, setUpdatingRole] = useState(false);
 
-  // Hardcoded match history - TODO: Replace with API call
-  const [matchHistory] = useState([
-    { id: 1, opponent: 'admiral_y', date: '2024-03-15 at 15:23', result: 'Win' },
-    { id: 2, opponent: 'captain_z', date: '2024-03-14 at 18:45', result: 'Loss' },
-    { id: 3, opponent: 'naval_b', date: '2024-03-14 at 12:10', result: 'Win' },
-    { id: 4, opponent: 'fleet_c', date: '2024-03-13 at 20:15', result: 'Win' },
-    { id: 5, opponent: 'sailor_a', date: '2024-03-13 at 14:30', result: 'Loss' },
-    { id: 6, opponent: 'marine_d', date: '2024-03-12 at 16:20', result: 'Win' },
-    { id: 7, opponent: 'pirate_x', date: '2024-03-12 at 11:45', result: 'Loss' },
-    { id: 8, opponent: 'corsair_y', date: '2024-03-11 at 19:30', result: 'Win' },
-    { id: 9, opponent: 'buccaneer_z', date: '2024-03-11 at 10:15', result: 'Win' },
-    { id: 10, opponent: 'privateer_a', date: '2024-03-10 at 15:50', result: 'Loss' }
-  ]);
+  // Players list
+  const [players, setPlayers] = useState([]);
+  const [loadingPlayers, setLoadingPlayers] = useState(false);
+  const [playersError, setPlayersError] = useState(null);
+
+  // Selected player detail modal
+  const [selectedPlayer, setSelectedPlayer] = useState(null);
+  const [showPlayerModal, setShowPlayerModal] = useState(false);
+  const [loadingPlayerDetail, setLoadingPlayerDetail] = useState(false);
 
   const fetchUserDetail = useCallback(async () => {
     try {
       setLoading(true);
       const data = await getUserById(id);
-      
-      // Calculate additional stats if not provided by API
       const totalGames = (data.wins || 0) + (data.losses || 0);
       const winRate = totalGames > 0 ? (data.wins || 0) / totalGames : 0;
-      
-      setUser({
-        ...data,
-        totalGames,
-        winRate,
-        // Default values if API doesn't provide
-        currentElo: data.currentElo || 1850,
-        currentLevel: data.currentLevel || 12,
-        wins: data.wins || 145,
-        losses: data.losses || 89
-      });
+      setUser({ ...data, totalGames, winRate });
       setError(null);
-    } catch (error) {
+    } catch (err) {
       setError('Failed to load user details');
-      console.error('Error fetching user:', error);
+      console.error('Error fetching user:', err);
     } finally {
       setLoading(false);
     }
@@ -70,63 +46,78 @@ function UserDetail() {
   const fetchRoles = useCallback(async () => {
     try {
       const response = await getRoles();
-      console.log('Roles Response:', response);
-      
-      // Handle different response formats
       let rolesData = [];
-      if (Array.isArray(response)) {
-        rolesData = response;
-      } else if (response?.data && Array.isArray(response.data)) {
-        rolesData = response.data;
-      } else if (response?.roles && Array.isArray(response.roles)) {
-        rolesData = response.roles;
-      }
-      
-      // Extract role names if roles are objects
+      if (Array.isArray(response)) rolesData = response;
+      else if (response?.data && Array.isArray(response.data)) rolesData = response.data;
+      else if (response?.roles && Array.isArray(response.roles)) rolesData = response.roles;
+
       const roleNames = rolesData.map(role => {
-        if (typeof role === 'string') {
-          return role;
-        } else if (role?.roleName) {
-          return role.roleName;
-        } else if (role?.name) {
-          return role.name;
-        } else if (role?.role) {
-          return role.role;
-        }
-        return String(role);
+        if (typeof role === 'string') return role;
+        return role?.roleName || role?.name || role?.role || String(role);
       });
-      
-      console.log('Processed Roles:', roleNames);
       setRoles(roleNames.length > 0 ? roleNames : ['Player', 'Admin', 'SuperAdmin']);
-    } catch (error) {
-      console.error('Error fetching roles:', error);
-      // Fallback to default roles if API fails
+    } catch (err) {
+      console.error('Error fetching roles:', err);
       setRoles(['Player', 'Admin', 'SuperAdmin']);
     }
   }, []);
+
+  const fetchPlayers = useCallback(async () => {
+    try {
+      setLoadingPlayers(true);
+      setPlayersError(null);
+      const response = await getUserPlayers(id);
+      let playersData = [];
+      if (Array.isArray(response)) playersData = response;
+      else if (response?.data && Array.isArray(response.data)) playersData = response.data;
+      setPlayers(playersData);
+    } catch (err) {
+      console.error('Error fetching players:', err);
+      setPlayersError('Không thể tải danh sách nhân vật.');
+    } finally {
+      setLoadingPlayers(false);
+    }
+  }, [id]);
 
   useEffect(() => {
     if (id) {
       fetchUserDetail();
       fetchRoles();
+      fetchPlayers();
     }
-  }, [id, fetchUserDetail, fetchRoles]);
+  }, [id, fetchUserDetail, fetchRoles, fetchPlayers]);
+
+  const handleViewPlayerDetail = async (player) => {
+    setShowPlayerModal(true);
+    setSelectedPlayer(null);
+    setLoadingPlayerDetail(true);
+    try {
+      const playerId = player.playerId || player.id;
+      const response = await getPlayerProfile(playerId);
+      let playerData = response;
+      if (response?.data) playerData = response.data;
+      setSelectedPlayer(playerData);
+    } catch (err) {
+      console.error('Error fetching player detail:', err);
+      // Fallback to basic player info
+      setSelectedPlayer(player);
+    } finally {
+      setLoadingPlayerDetail(false);
+    }
+  };
 
   const handleToggleStatus = async () => {
     if (!user) return;
-    
     try {
       setUpdatingStatus(true);
       const newStatus = !user.isActive;
       await updateUserStatus(id, newStatus);
-      
       setUser(prev => ({ ...prev, isActive: newStatus }));
       setSuccess(`User ${newStatus ? 'unbanned' : 'banned'} successfully`);
       setTimeout(() => setSuccess(null), 3000);
-    } catch (error) {
+    } catch (err) {
       setError('Failed to update user status');
       setTimeout(() => setError(null), 3000);
-      console.error('Error updating status:', error);
     } finally {
       setUpdatingStatus(false);
     }
@@ -134,18 +125,15 @@ function UserDetail() {
 
   const handleRoleChange = async (newRole) => {
     if (!user || newRole === user.role) return;
-    
     try {
       setUpdatingRole(true);
       await updateUserRole(id, newRole);
-      
       setUser(prev => ({ ...prev, role: newRole }));
       setSuccess('User role updated successfully');
       setTimeout(() => setSuccess(null), 3000);
-    } catch (error) {
+    } catch (err) {
       setError('Failed to update user role');
       setTimeout(() => setError(null), 3000);
-      console.error('Error updating role:', error);
     } finally {
       setUpdatingRole(false);
     }
@@ -154,10 +142,20 @@ function UserDetail() {
   const getUserInitials = (username) => {
     if (!username) return 'U';
     const parts = username.split('_');
-    if (parts.length >= 2) {
-      return (parts[0][0] + parts[1][0]).toUpperCase();
-    }
+    if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
     return username.substring(0, 2).toUpperCase();
+  };
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return 'N/A';
+    try {
+      return new Date(dateStr).toLocaleString('vi-VN', {
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit'
+      });
+    } catch {
+      return dateStr;
+    }
   };
 
   if (loading) {
@@ -177,7 +175,7 @@ function UserDetail() {
         <div className="error-state">
           <AlertCircle size={48} />
           <h2>User Not Found</h2>
-          <p>The user you're looking for doesn't exist.</p>
+          <p>The user you&apos;re looking for doesn&apos;t exist.</p>
           <button className="btn-primary" onClick={() => navigate('/users')}>
             Back to Users
           </button>
@@ -200,16 +198,8 @@ function UserDetail() {
       </div>
 
       {/* Success/Error Messages */}
-      {success && (
-        <div className="alert alert-success">
-          ✓ {success}
-        </div>
-      )}
-      {error && (
-        <div className="alert alert-error">
-          ⚠️ {error}
-        </div>
-      )}
+      {success && <div className="alert alert-success">✓ {success}</div>}
+      {error && <div className="alert alert-error">⚠️ {error}</div>}
 
       {/* Main Layout */}
       <div className="user-detail-layout">
@@ -218,17 +208,13 @@ function UserDetail() {
           {/* Profile Information Card */}
           <div className="profile-card">
             <h3 className="card-title">Profile Information</h3>
-            
             <div className="profile-header">
-              <div className="profile-avatar-large">
-                {getUserInitials(user.username)}
-              </div>
+              <div className="profile-avatar-large">{getUserInitials(user.username)}</div>
               <div className="profile-info">
                 <h2 className="profile-name">{user.username}</h2>
                 <p className="profile-email">{user.email}</p>
               </div>
             </div>
-
             <div className="profile-details">
               <div className="profile-detail-row">
                 <span className="detail-label">User ID</span>
@@ -237,13 +223,9 @@ function UserDetail() {
               <div className="profile-detail-row">
                 <span className="detail-label">Member Since</span>
                 <span className="detail-value">
-                  {user.createdAt 
-                    ? new Date(user.createdAt).toLocaleDateString('en-US', { 
-                        year: 'numeric', 
-                        month: '2-digit', 
-                        day: '2-digit' 
-                      })
-                    : '2024-01-15'}
+                  {user.createdAt
+                    ? new Date(user.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' })
+                    : 'N/A'}
                 </span>
               </div>
               <div className="profile-detail-row">
@@ -259,7 +241,6 @@ function UserDetail() {
           <div className="admin-controls-card">
             <h3 className="card-title card-title-danger">Admin Controls</h3>
             <p className="card-subtitle">Manage user status and permissions</p>
-
             <div className="admin-control-section">
               <div className="control-header">
                 <div>
@@ -267,17 +248,11 @@ function UserDetail() {
                   <p className="control-description">Toggle to ban/unban user</p>
                 </div>
                 <label className="toggle-switch">
-                  <input
-                    type="checkbox"
-                    checked={user.isActive}
-                    onChange={handleToggleStatus}
-                    disabled={updatingStatus}
-                  />
+                  <input type="checkbox" checked={user.isActive} onChange={handleToggleStatus} disabled={updatingStatus} />
                   <span className="toggle-slider"></span>
                 </label>
               </div>
             </div>
-
             <div className="admin-control-section">
               <div className="control-header">
                 <div>
@@ -292,9 +267,7 @@ function UserDetail() {
                 disabled={updatingRole}
               >
                 {roles.map((role, index) => (
-                  <option key={index} value={role}>
-                    {role}
-                  </option>
+                  <option key={index} value={role}>{role}</option>
                 ))}
               </select>
             </div>
@@ -303,80 +276,196 @@ function UserDetail() {
 
         {/* Right Column */}
         <div className="user-detail-right">
-          {/* Game Statistics Card */}
-          <div className="game-stats-card">
-            <h3 className="card-title">Game Statistics</h3>
-            <p className="card-subtitle">Player performance and achievements</p>
-
-            <div className="stats-grid">
-              <div className="stat-item">
-                <div className="stat-icon-wrapper">
-                  <Star size={20} />
-                </div>
-                <div className="stat-content">
-                  <p className="stat-label">Elo Rating</p>
-                  <p className="stat-value">{user.currentElo}</p>
-                </div>
+          {/* Players List Card */}
+          <div className="players-list-card">
+            <div className="card-header-row">
+              <div>
+                <h3 className="card-title">Nhân vật (Players)</h3>
+                <p className="card-subtitle">Danh sách nhân vật của người dùng này</p>
               </div>
-
-              <div className="stat-item">
-                <div className="stat-icon-wrapper">
-                  <TrendingUp size={20} />
-                </div>
-                <div className="stat-content">
-                  <p className="stat-label">Current Level</p>
-                  <p className="stat-value">{user.currentLevel}</p>
-                </div>
-              </div>
-
-              <div className="stat-item">
-                <div className="stat-icon-wrapper">
-                  <Trophy size={20} />
-                </div>
-                <div className="stat-content">
-                  <p className="stat-label">Wins / Losses</p>
-                  <p className="stat-value">{user.wins} / {user.losses}</p>
-                </div>
-              </div>
-
-              <div className="stat-item">
-                <div className="stat-icon-wrapper">
-                  <Target size={20} />
-                </div>
-                <div className="stat-content">
-                  <p className="stat-label">Win Rate</p>
-                  <p className="stat-value">{Math.round(user.winRate * 100)}%</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Match History Card */}
-          <div className="match-history-card">
-            <h3 className="card-title">Match History</h3>
-            <p className="card-subtitle">Recent 10 matches</p>
-
-            <div className="match-history-note">
-              <AlertCircle size={16} />
-              <span>Note: Match history is hardcoded. Implement GET /player/{id}/history API</span>
+              <span className="players-count-badge">{players.length} nhân vật</span>
             </div>
 
-            <div className="match-list">
-              {matchHistory.map((match) => (
-                <div key={match.id} className="match-item">
-                  <div className="match-info">
-                    <p className="match-opponent">vs {match.opponent}</p>
-                    <p className="match-date">{match.date}</p>
-                  </div>
-                  <span className={`match-result ${match.result.toLowerCase()}`}>
-                    {match.result}
-                  </span>
-                </div>
-              ))}
-            </div>
+            {loadingPlayers ? (
+              <div className="players-loading">
+                <Loader2 size={24} className="spin-icon" />
+                <p>Đang tải danh sách nhân vật...</p>
+              </div>
+            ) : playersError ? (
+              <div className="players-error">
+                <AlertCircle size={20} />
+                <span>{playersError}</span>
+              </div>
+            ) : players.length === 0 ? (
+              <div className="players-empty">
+                <User size={36} strokeWidth={1.5} />
+                <p>Người dùng này chưa có nhân vật nào</p>
+              </div>
+            ) : (
+              <div className="players-grid">
+                {players.map((player, index) => {
+                  const playerId = player.playerId;
+                  const displayName = player.displayName;
+                  const elo = player.currentElo;
+
+                  return (
+                    <button
+                      key={playerId}
+                      className="player-card-btn"
+                      onClick={() => handleViewPlayerDetail(player)}
+                    >
+                      <div className="player-card-avatar">
+                        {displayName.substring(0, 2).toUpperCase()}
+                      </div>
+                      <div className="player-card-info">
+                        <span className="player-card-name">{displayName}</span>
+                        <span className="player-card-elo">⭐ {elo} ELO</span>
+                        <span className="player-card-elo">{player.serverName}</span>
+                      </div>
+                      <ChevronRight size={16} className="player-card-arrow" />
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       </div>
+
+      {/* Player Detail Modal */}
+      {showPlayerModal && (
+        <div className="modal-overlay" onClick={() => setShowPlayerModal(false)}>
+          <div className="modal-content player-detail-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div className="modal-title-with-icon">
+                <User size={22} className="modal-title-icon" />
+                <h2>Chi tiết Nhân vật</h2>
+              </div>
+              <button className="modal-close" onClick={() => setShowPlayerModal(false)}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="modal-body">
+              {loadingPlayerDetail ? (
+                <div className="player-modal-loading">
+                  <Loader2 size={32} className="spin-icon" />
+                  <p>Đang tải thông tin nhân vật...</p>
+                </div>
+              ) : selectedPlayer ? (
+                <div className="player-modal-content">
+                  {/* Player Header */}
+                  <div className="player-modal-header">
+                    <div className="player-modal-avatar">
+                      {(selectedPlayer.displayName || 'P').substring(0, 2).toUpperCase()}
+                    </div>
+                    <div>
+                      <h3 className="player-modal-name">{selectedPlayer.displayName}</h3>
+                      <p className="player-modal-id">ID: #{selectedPlayer.playerId}</p>
+                    </div>
+                  </div>
+
+                  {/* Stats Grid */}
+                  <div className="player-stats-section">
+                    <h4 className="player-section-title">
+                      <Star size={16} /> Thống kê
+                    </h4>
+                    <div className="player-stats-modal-grid">
+                      <div className="player-stat-box">
+                        <Star size={18} className="pstat-icon elo" />
+                        <span className="pstat-label">ELO</span>
+                        <span className="pstat-value">{selectedPlayer.elo}</span>
+                      </div>
+                      <div className="player-stat-box">
+                        <Trophy size={18} className="pstat-icon wins" />
+                        <span className="pstat-label">Thắng</span>
+                        <span className="pstat-value">{selectedPlayer.totalWins}</span>
+                      </div>
+                      <div className="player-stat-box">
+                        <Swords size={18} className="pstat-icon losses" />
+                        <span className="pstat-label">Thua</span>
+                        <span className="pstat-value">{selectedPlayer.totalLosses}</span>
+                      </div>
+                      <div className="player-stat-box">
+                        <Target size={18} className="pstat-icon winrate" />
+                        <span className="pstat-label">Win Rate</span>
+                        <span className="pstat-value">
+                          {selectedPlayer.winRate}
+                        </span>
+                      </div>
+                      {selectedPlayer.currentStreak !== undefined && selectedPlayer.currentStreak !== null && (
+                        <div className="player-stat-box">
+                          <Flame
+                            size={18}
+                            className={`pstat-icon streak ${selectedPlayer.currentStreak < 0 ? 'flame-blue' : 'flame-red'}`}
+                          />
+                          <span className="pstat-label"> Current Streak</span>
+                          <span className="pstat-value">{Math.abs(selectedPlayer.currentStreak)}</span>
+                        </div>
+                      )}
+                      {selectedPlayer.totalMatches != null && (
+                        <div className="player-stat-box">
+                          <Swords size={18} className="pstat-icon total" />
+                          <span className="pstat-label">Total Matches</span>
+                          <span className="pstat-value">{selectedPlayer.totalMatches}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Recent Matches */}
+                  {selectedPlayer.recentMatches && selectedPlayer.recentMatches.length > 0 && (
+                    <div className="player-matches-section">
+                      <h4 className="player-section-title">
+                        <Swords size={16} /> 10 trận gần nhất
+                      </h4>
+                      <div className="player-match-list">
+                        {selectedPlayer.recentMatches.map((match, idx) => {
+                          const isWin = match.result === 'Win' || match.isWin || match.won;
+                          const eloChange = match.eloChange || 0;
+                          return (
+                            <div key={match.matchId || match.id || idx} className="player-match-item">
+                              <div className="player-match-main">
+                                <div className="player-match-info">
+                                  <span className="player-match-opponent">
+                                    vs {match.opponentName || 'Unknown'}
+                                  </span>
+                                  <span className="player-match-date">
+                                    {formatDate(match.timestamp || match.playedAt || match.date)}
+                                  </span>
+                                </div>
+                                <div className="player-match-status">
+                                  <span className={`player-match-result ${isWin ? 'win' : 'loss'}`}>
+                                    {isWin ? 'Thắng' : 'Thua'}
+                                  </span>
+                                  <span className={`player-match-elo-change ${eloChange >= 0 ? 'plus' : 'minus'}`}>
+                                    {eloChange >= 0 ? `+${eloChange}` : eloChange}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="player-match-footer">
+                                <span className="player-match-duration">
+                                  <Clock size={12} /> {match.duration}
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : null}
+            </div>
+
+            <div className="modal-footer">
+              <button className="btn-secondary" onClick={() => setShowPlayerModal(false)}>
+                Đóng
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

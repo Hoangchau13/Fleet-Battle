@@ -33,7 +33,10 @@ export const createLevel = async (levelData) => {
     const response = await apiClient.post('/game/levels', {
       levelName: levelData.levelName,
       boardSize: parseInt(levelData.boardSize),
-      timeLimit: parseInt(levelData.timeLimit)
+      timeLimit: parseInt(levelData.timeLimit),
+      eloMin: parseInt(levelData.eloMin) || 0,
+      eloMax: parseInt(levelData.eloMax) || 0,
+      eloPoints: parseInt(levelData.eloPoints) || 0
     });
     return response.data;
   } catch (error) {
@@ -47,7 +50,10 @@ export const updateLevel = async (levelId, levelData) => {
   try {
     const response = await apiClient.put(`/game/levels/${levelId}`, {
       boardSize: parseInt(levelData.boardSize),
-      timeLimit: parseInt(levelData.timeLimit)
+      timeLimit: parseInt(levelData.timeLimit),
+      eloMin: parseInt(levelData.eloMin) || 0,
+      eloMax: parseInt(levelData.eloMax) || 0,
+      eloPoints: parseInt(levelData.eloPoints) || 0
     });
     return response.data;
   } catch (error) {

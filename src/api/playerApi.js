@@ -18,6 +18,17 @@ export const createPlayer = async (playerData) => {
   }
 };
 
+// Lấy danh sách player của tôi (GET /player/mine)
+export const getMyPlayers = async () => {
+  try {
+    const response = await apiClient.get('/player/mine');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching my players:', error);
+    throw error;
+  }
+};
+
 /**
  * NOTE FOR BACKEND: Cần implement các API sau cho UserDetail page
  */

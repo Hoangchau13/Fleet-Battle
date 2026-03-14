@@ -655,3 +655,90 @@
   cursor: not-allowed;
   opacity: 0.6;
 }
+
+/* Ship Shape Builder */
+.shape-builder-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+}
+
+.shape-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 40px);
+  gap: 4px;
+  background: #e5e7eb;
+  padding: 8px;
+  border-radius: 8px;
+}
+
+.shape-cell {
+  width: 40px;
+  height: 40px;
+  background: white;
+  border-radius: 4px;
+  border: 1px solid #d1d5db;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+
+.shape-cell:hover {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+.shape-cell.selected {
+  background: #3b82f6;
+  border-color: #2563eb;
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.4);
+}
+
+.shape-cell.anchor {
+  background: #fecaca;
+  border-color: #dc2626;
+  color: white;
+}
+
+.shape-cell.anchor.selected {
+  background: #dc2626;
+  box-shadow: 0 0 8px rgba(220, 38, 38, 0.4);
+}
+
+/* Mini Ship Shape Preview */
+.mini-shape-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 8px);
+  gap: 1px;
+  background: white;
+  padding: 3px;
+  border-radius: 4px;
+}
+
+.mini-shape-cell {
+  width: 8px;
+  height: 8px;
+  background: #e5e7eb;
+  border-radius: 1px;
+}
+
+.mini-shape-cell.active {
+  background: #2563eb;
+}
+
+.mini-shape-cell.anchor {
+  background: #fca5a5;
+}
+
+.mini-shape-cell.anchor.active {
+  background: #dc2626;
+}

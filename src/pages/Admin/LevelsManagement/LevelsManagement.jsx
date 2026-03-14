@@ -22,7 +22,10 @@ function LevelsManagement() {
   const [formData, setFormData] = useState({
     levelName: '',
     boardSize: 10,
-    timeLimit: 600
+    timeLimit: 600,
+    eloMin: 0,
+    eloMax: 0,
+    eloPoints: 0
   });
 
   const [shipConfigData, setShipConfigData] = useState([]);
@@ -55,7 +58,7 @@ function LevelsManagement() {
     }
   };
 
-  const _handleViewDetail = async (levelId) => {
+  const handleViewDetail = async (levelId) => {
     try {
       setLoadingDetail(true);
       setShowDetailModal(true);
@@ -88,7 +91,7 @@ function LevelsManagement() {
       setSuccess('Tạo level mới thành công! 🎉');
       setTimeout(() => setSuccess(null), 3000);
       setShowCreateModal(false);
-      setFormData({ levelName: '', boardSize: 10, timeLimit: 600 });
+      setFormData({ levelName: '', boardSize: 10, timeLimit: 600, eloMin: 0, eloMax: 0, eloPoints: 0 });
       await fetchLevels();
     } catch (err) {
       console.error('Create level error:', err);
@@ -103,7 +106,10 @@ function LevelsManagement() {
     setSelectedLevel(level);
     setFormData({
       boardSize: level.boardSize || 10,
-      timeLimit: level.timeLimit || 600
+      timeLimit: level.timeLimit || 600,
+      eloMin: level.eloMin || 0,
+      eloMax: level.eloMax || 0,
+      eloPoints: level.eloPoints || 0
     });
     setShowEditModal(true);
   };
@@ -245,6 +251,46 @@ function LevelsManagement() {
     }
   };
 
+  const renderShipPreview = (shapePattern) => {
+    let activeCells = [];
+    try {
+      if (typeof shapePattern === 'string') {
+        activeCells = JSON.parse(shapePattern || '[[0,0]]');
+      } else if (Array.isArray(shapePattern)) {
+        activeCells = shapePattern;
+      } else {
+        activeCells = [[0,0]];
+      }
+    } catch (e) {
+      activeCells = [[0,0]];
+    }
+
+    const grid = Array(5).fill().map(() => Array(5).fill(false));
+    activeCells.forEach(([x, y]) => {
+      const c = x + 2;
+      const r = y + 2;
+      if (r >= 0 && r < 5 && c >= 0 && c < 5) {
+        grid[r][c] = true;
+      }
+    });
+
+    return (
+      <div className="mini-shape-grid">
+        {grid.map((row, r) => (
+          row.map((isActive, c) => {
+            const isAnchor = r === 2 && c === 2;
+            return (
+              <div
+                key={`${r}-${c}`}
+                className={`mini-shape-cell ${isActive ? 'active' : ''} ${isAnchor ? 'anchor' : ''}`}
+              />
+            );
+          })
+        ))}
+      </div>
+    );
+  };
+
   return (
     <div className="levels-management">
       <div className="page-header">
@@ -288,9 +334,17 @@ function LevelsManagement() {
               
               return (
                 <div key={level.levelId} className="level-card">
-                  <div className="level-header">
-                    <h3 className="level-title">{level.levelName}</h3>
-                    <span className="level-badge">Level {levelNumber}</span>
+                  <div className="level-header cursor-pointer group" onClick={() => handleViewDetail(level.levelId || level.id)}>
+                    <h3 className="level-title group-hover:text-blue-600 transition-colors">{level.levelName}</h3>
+                    <div className="flex items-center gap-2">
+                      <span className="level-badge">Level {levelNumber}</span>
+                      <button 
+                        className="p-1 text-gray-400 hover:text-blue-500 rounded-full hover:bg-blue-50 transition-colors"
+                        title="View Details"
+                      >
+                        <Info size={16} />
+                      </button>
+                    </div>
                   </div>
                   
                   {level.description && (
@@ -462,6 +516,18 @@ function LevelsManagement() {
                           )}
                         </span>
                       </div>
+                      <div className="detail-item">
+                        <span className="detail-label">Elo Range:</span>
+                        <span className="detail-value">
+                          {selectedLevel.eloMin !== undefined ? selectedLevel.eloMin : 'N/A'} - {selectedLevel.eloMax !== undefined ? selectedLevel.eloMax : 'N/A'}
+                        </span>
+                      </div>
+                      <div className="detail-item">
+                        <span className="detail-label">Elo Points:</span>
+                        <span className="detail-value strong" style={{ color: '#10b981' }}>
+                          +{selectedLevel.eloPoints !== undefined ? selectedLevel.eloPoints : 'N/A'}
+                        </span>
+                      </div>
                     </div>
                   </div>
 
@@ -475,8 +541,8 @@ function LevelsManagement() {
                       <div className="ships-list">
                         {selectedLevel.ships.map((ship, index) => (
                           <div key={index} className="ship-item">
-                            <div className="ship-icon">
-                              <Anchor size={20} />
+                            <div className="ship-icon" title="Ship Shape Preview">
+                              {renderShipPreview(ship.shapePattern)}
                             </div>
                             <div className="ship-info">
                               <div className="ship-name">{ship.shipName || ship.shipTypeName || `Ship ${index + 1}`}</div>
@@ -534,6 +600,18 @@ function LevelsManagement() {
 
             <form onSubmit={handleCreateLevel}>
               <div className="modal-body">
+                {error && (
+                  <div className="alert alert-error" style={{ marginBottom: '20px' }}>
+                    ⚠️ {error}
+                    <button
+                      className="alert-close"
+                      onClick={() => setError(null)}
+                      type="button"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
                 <div className="form-section">
                   <div className="form-group">
                     <label htmlFor="levelName">
@@ -594,6 +672,57 @@ function LevelsManagement() {
                       disabled={loadingSubmit}
                     />
                     <p className="form-hint">Thời gian tối đa để hoàn thành level (tính bằng giây). Từ 60s đến 3600s</p>
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="eloMin">
+                      <Tag size={18} className="label-icon" />
+                      Elo Tối Thiểu
+                    </label>
+                    <input
+                      type="number"
+                      id="eloMin"
+                      name="eloMin"
+                      value={formData.eloMin}
+                      onChange={(e) => setFormData(prev => ({ ...prev, eloMin: parseInt(e.target.value) || 0 }))}
+                      placeholder="Elo tối thiểu để chơi level này"
+                      min="0"
+                      disabled={loadingSubmit}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="eloMax">
+                      <Tag size={18} className="label-icon" />
+                      Elo Tối Đa
+                    </label>
+                    <input
+                      type="number"
+                      id="eloMax"
+                      name="eloMax"
+                      value={formData.eloMax}
+                      onChange={(e) => setFormData(prev => ({ ...prev, eloMax: parseInt(e.target.value) || 0 }))}
+                      placeholder="Elo tối đa để chơi level này"
+                      min="0"
+                      disabled={loadingSubmit}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="eloPoints">
+                      <Tag size={18} className="label-icon" />
+                      Điểm thưởng Elo
+                    </label>
+                    <input
+                      type="number"
+                      id="eloPoints"
+                      name="eloPoints"
+                      value={formData.eloPoints}
+                      onChange={(e) => setFormData(prev => ({ ...prev, eloPoints: parseInt(e.target.value) || 0 }))}
+                      placeholder="Số Elo nhận được khi thắng"
+                      min="0"
+                      disabled={loadingSubmit}
+                    />
                   </div>
                 </div>
               </div>
@@ -692,6 +821,57 @@ function LevelsManagement() {
                       disabled={loadingSubmit}
                     />
                     <p className="form-hint">Thời gian tối đa để hoàn thành level (tính bằng giây). Từ 60s đến 3600s</p>
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="editEloMin">
+                      <Tag size={18} className="label-icon" />
+                      Elo Tối Thiểu
+                    </label>
+                    <input
+                      type="number"
+                      id="editEloMin"
+                      name="eloMin"
+                      value={formData.eloMin}
+                      onChange={(e) => setFormData(prev => ({ ...prev, eloMin: parseInt(e.target.value) || 0 }))}
+                      placeholder="Elo tối thiểu để chơi level này"
+                      min="0"
+                      disabled={loadingSubmit}
+                    />
+                  </div>
+                  
+                  <div className="form-group">
+                    <label htmlFor="editEloMax">
+                      <Tag size={18} className="label-icon" />
+                      Elo Tối Đa
+                    </label>
+                    <input
+                      type="number"
+                      id="editEloMax"
+                      name="eloMax"
+                      value={formData.eloMax}
+                      onChange={(e) => setFormData(prev => ({ ...prev, eloMax: parseInt(e.target.value) || 0 }))}
+                      placeholder="Elo tối đa để chơi level này"
+                      min="0"
+                      disabled={loadingSubmit}
+                    />
+                  </div>
+                  
+                  <div className="form-group">
+                    <label htmlFor="editEloPoints">
+                      <Tag size={18} className="label-icon" />
+                      Điểm thưởng Elo
+                    </label>
+                    <input
+                      type="number"
+                      id="editEloPoints"
+                      name="eloPoints"
+                      value={formData.eloPoints}
+                      onChange={(e) => setFormData(prev => ({ ...prev, eloPoints: parseInt(e.target.value) || 0 }))}
+                      placeholder="Số Elo nhận được khi thắng"
+                      min="0"
+                      disabled={loadingSubmit}
+                    />
                   </div>
                 </div>
               </div>
@@ -813,8 +993,8 @@ function LevelsManagement() {
                               className={`ship-config-item ${quantity > 0 ? 'selected' : ''}`}
                             >
                               <div className="ship-config-info">
-                                <div className="ship-config-icon">
-                                  <Anchor size={28} strokeWidth={2} className="ship-icon-svg" />
+                                <div className="ship-config-icon" title="Ship Shape Preview">
+                                  {renderShipPreview(shipType.shapePattern)}
                                   {quantity > 0 && (
                                     <span className="quantity-badge">{quantity}</span>
                                   )}

@@ -509,3 +509,335 @@
   background: #1d4ed8;
   box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
 }
+
+/* ─── Players List Card ─────────────────────── */
+.players-list-card {
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  padding: 24px;
+}
+
+.card-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+}
+
+.players-count-badge {
+  background: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 20px;
+  flex-shrink: 0;
+}
+
+/* Loading / error / empty within players card */
+.players-loading,
+.players-error,
+.players-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  gap: 12px;
+  color: #6b7280;
+  font-size: 14px;
+  text-align: center;
+}
+
+.players-error {
+  flex-direction: row;
+  color: #dc2626;
+}
+
+.spin-icon {
+  animation: spin 1s linear infinite;
+}
+
+/* Players grid list */
+.players-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 480px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.players-grid::-webkit-scrollbar { width: 5px; }
+.players-grid::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 10px; }
+.players-grid::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+
+.player-card-btn {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+  width: 100%;
+}
+
+.player-card-btn:hover {
+  background: #eff6ff;
+  border-color: #93c5fd;
+  transform: translateX(3px);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.12);
+}
+
+.player-card-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3b82f6, #6366f1);
+  color: white;
+  font-size: 16px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.player-card-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.player-card-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.player-card-elo {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.player-card-arrow {
+  color: #9ca3af;
+  flex-shrink: 0;
+}
+
+/* ─── Player Detail Modal ───────────────────── */
+.player-detail-modal {
+  max-width: 600px;
+}
+
+.player-modal-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 40px 20px;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.player-modal-content {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.player-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: linear-gradient(135deg, #eff6ff, #f5f3ff);
+  border-radius: 10px;
+  border: 1px solid #ddd6fe;
+}
+
+.player-modal-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  color: white;
+  font-size: 20px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+.player-modal-name {
+  font-size: 20px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 4px 0;
+}
+
+.player-modal-id {
+  font-size: 13px;
+  color: #6b7280;
+  margin: 0;
+}
+
+.player-section-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #374151;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 14px 0;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.player-section-title svg {
+  color: #3b82f6;
+}
+
+/* Stats grid inside modal */
+.player-stats-modal-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.player-stat-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 10px;
+  background: #f9fafb;
+  border: 1px solid #f3f4f6;
+  border-radius: 10px;
+  text-align: center;
+}
+
+.pstat-icon { flex-shrink: 0; }
+.pstat-icon.elo    { color: #f59e0b; }
+.pstat-icon.wins   { color: #10b981; }
+.pstat-icon.losses { color: #ef4444; }
+.pstat-icon.winrate { color: #3b82f6; }
+.pstat-icon.streak  { color: #8b5cf6; }
+.flame-red { color: #ef4444 !important; }
+.flame-blue { color: #3b82f6 !important; }
+.pstat-icon.total   { color: #6b7280; }
+
+.pstat-label {
+  font-size: 12px;
+  color: #6b7280;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.pstat-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: #111827;
+}
+
+/* Match list inside modal */
+.player-match-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.player-match-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  background: #f9fafb;
+  border: 1px solid #f3f4f6;
+  border-radius: 8px;
+}
+
+.player-match-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.player-match-status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.player-match-elo-change {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.player-match-elo-change.plus { color: #10b981; }
+.player-match-elo-change.minus { color: #ef4444; }
+
+.player-match-footer {
+  display: flex;
+  align-items: center;
+  padding-top: 6px;
+  border-top: 1px dashed #e5e7eb;
+}
+
+.player-match-duration {
+  font-size: 11px;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.player-match-info {
+  flex: 1;
+}
+
+.player-match-opponent {
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+  display: block;
+  margin-bottom: 3px;
+}
+
+.player-match-date {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.player-match-result {
+  padding: 4px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.player-match-result.win {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.player-match-result.loss {
+  background: #fee2e2;
+  color: #991b1b;
+}
+

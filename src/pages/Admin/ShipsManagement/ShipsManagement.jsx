@@ -16,9 +16,12 @@ function ShipsManagement() {
   
   const [formData, setFormData] = useState({
     shipName: '',
-    size: 2,
-    modelCode: ''
+    size: 1,
+    modelCode: '',
+    shapePattern: '[[0,0]]'
   });
+  
+  const [builderGrid, setBuilderGrid] = useState(Array(5).fill().map(() => Array(5).fill(false)));
 
   useEffect(() => {
     fetchShipTypes();
@@ -56,7 +59,7 @@ function ShipsManagement() {
       await createShipType(formData);
       setSuccess('Ship type created successfully!');
       setShowCreateModal(false);
-      setFormData({ shipName: '', size: 2, modelCode: '' });
+      setFormData({ shipName: '', size: 1, modelCode: '', shapePattern: '[[0,0]]' });
       fetchShipTypes();
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
@@ -68,12 +71,55 @@ function ShipsManagement() {
 
   const handleEditClick = (ship) => {
     setSelectedShip(ship);
+    
+    const initialGrid = Array(5).fill().map(() => Array(5).fill(false));
+    try {
+      const parsedPattern = JSON.parse(ship.shapePattern || '[[0,0]]');
+      parsedPattern.forEach(([x, y]) => {
+        const c = x + 2;
+        const r = y + 2;
+        if (r >= 0 && r < 5 && c >= 0 && c < 5) {
+          initialGrid[r][c] = true;
+        }
+      });
+    } catch (e) {
+      initialGrid[2][2] = true;
+    }
+    
+    setBuilderGrid(initialGrid);
     setFormData({
       shipName: ship.shipName,
       size: ship.size,
-      modelCode: ship.modelCode
+      modelCode: ship.modelCode,
+      shapePattern: ship.shapePattern || '[[0,0]]'
     });
     setShowEditModal(true);
+  };
+
+  const openCreateModal = () => {
+    const initialGrid = Array(5).fill().map(() => Array(5).fill(false));
+    initialGrid[2][2] = true; // Anchor selected by default
+    setBuilderGrid(initialGrid);
+    setFormData({ shipName: '', size: 1, modelCode: '', shapePattern: '[[0,0]]' });
+    setShowCreateModal(true);
+  };
+
+  const handleCellClick = (r, c) => {
+    const newGrid = [...builderGrid.map(row => [...row])];
+    newGrid[r][c] = !newGrid[r][c];
+    setBuilderGrid(newGrid);
+    
+    const pattern = [];
+    let count = 0;
+    for (let row = 0; row < 5; row++) {
+      for (let col = 0; col < 5; col++) {
+        if (newGrid[row][col]) {
+          pattern.push([col - 2, row - 2]);
+          count++;
+        }
+      }
+    }
+    setFormData(prev => ({ ...prev, size: count, shapePattern: JSON.stringify(pattern) }));
   };
 
   const handleUpdateShipType = async (e) => {
@@ -85,7 +131,7 @@ function ShipsManagement() {
       setSuccess('Ship type updated successfully!');
       setShowEditModal(false);
       setSelectedShip(null);
-      setFormData({ shipName: '', size: 2, modelCode: '' });
+      setFormData({ shipName: '', size: 1, modelCode: '', shapePattern: '[[0,0]]' });
       fetchShipTypes();
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
@@ -115,6 +161,40 @@ function ShipsManagement() {
     }
   };
 
+  const renderShipPreview = (shapePattern) => {
+    let activeCells = [];
+    try {
+      activeCells = JSON.parse(shapePattern || '[[0,0]]');
+    } catch (e) {
+      activeCells = [[0,0]];
+    }
+
+    const grid = Array(5).fill().map(() => Array(5).fill(false));
+    activeCells.forEach(([x, y]) => {
+      const c = x + 2;
+      const r = y + 2;
+      if (r >= 0 && r < 5 && c >= 0 && c < 5) {
+        grid[r][c] = true;
+      }
+    });
+
+    return (
+      <div className="mini-shape-grid">
+        {grid.map((row, r) => (
+          row.map((isActive, c) => {
+            const isAnchor = r === 2 && c === 2;
+            return (
+              <div
+                key={`${r}-${c}`}
+                className={`mini-shape-cell ${isActive ? 'active' : ''} ${isAnchor ? 'anchor' : ''}`}
+              />
+            );
+          })
+        ))}
+      </div>
+    );
+  };
+
 
   return (
     <div className="ships-management">
@@ -123,7 +203,7 @@ function ShipsManagement() {
           <h1>Ship Types Dictionary</h1>
           <p className="page-subtitle">Available ship types for level configuration</p>
         </div>
-        <button className="btn-create" onClick={() => setShowCreateModal(true)}>
+        <button className="btn-create" onClick={openCreateModal}>
           <Plus size={20} />
           Add New Ship Type
         </button>
@@ -156,7 +236,9 @@ function ShipsManagement() {
           {shipTypes.map((ship, index) => (
               <div key={ship.shipTypeId || index} className="ship-card">
                 <div className="ship-card-header">
-                  <div className="ship-icon-manage"><Ship size={32} /></div>
+                  <div className="ship-icon-manage">
+                    {renderShipPreview(ship.shapePattern)}
+                  </div>
                   <div className="ship-info">
                     <h3>{ship.shipName}</h3>
                     <span className="ship-size-badge">Size: {ship.size} cells</span>
@@ -235,14 +317,38 @@ function ShipsManagement() {
                       id="size"
                       name="size"
                       value={formData.size}
-                      onChange={(e) => setFormData(prev => ({ ...prev, size: parseInt(e.target.value) || 0 }))}
-                      placeholder="Enter ship size"
-                      required
-                      min="1"
-                      max="10"
-                      disabled={loadingSubmit}
+                      readOnly
+                      disabled={true}
+                      placeholder="Auto calculated"
                     />
-                    <p className="form-hint">Number of cells the ship occupies (1-10)</p>
+                    <p className="form-hint">Auto calculated from Ship Shape Builder</p>
+                  </div>
+
+                  <div className="form-group">
+                    <label>
+                      <Package size={18} className="label-icon" />
+                      Ship Shape Builder
+                    </label>
+                    <div className="shape-builder-container">
+                      <p className="form-hint" style={{ marginBottom: '8px' }}>Mỗi ô được chọn tính 1 size. Ô màu đỏ ⚓ là Điểm Neo (0,0).</p>
+                      <div className="shape-grid">
+                        {builderGrid.map((row, r) => (
+                          row.map((isSelected, c) => {
+                            const isAnchor = r === 2 && c === 2;
+                            return (
+                              <div
+                                key={`${r}-${c}`}
+                                className={`shape-cell ${isSelected ? 'selected' : ''} ${isAnchor ? 'anchor' : ''}`}
+                                onClick={() => handleCellClick(r, c)}
+                                title={`[${c - 2}, ${r - 2}]`}
+                              >
+                                {isAnchor && '⚓'}
+                              </div>
+                            );
+                          })
+                        ))}
+                      </div>
+                    </div>
                   </div>
 
                   <div className="form-group">
@@ -340,14 +446,38 @@ function ShipsManagement() {
                       id="editSize"
                       name="size"
                       value={formData.size}
-                      onChange={(e) => setFormData(prev => ({ ...prev, size: parseInt(e.target.value) || 0 }))}
-                      placeholder="Enter ship size"
-                      required
-                      min="1"
-                      max="10"
-                      disabled={loadingSubmit}
+                      readOnly
+                      disabled={true}
+                      placeholder="Auto calculated"
                     />
-                    <p className="form-hint">Number of cells the ship occupies (1-10)</p>
+                    <p className="form-hint">Auto calculated from Ship Shape Builder</p>
+                  </div>
+
+                  <div className="form-group">
+                    <label>
+                      <Package size={18} className="label-icon" />
+                      Ship Shape Builder
+                    </label>
+                    <div className="shape-builder-container">
+                      <p className="form-hint" style={{ marginBottom: '8px' }}>Mỗi ô được chọn tính 1 size. Ô màu đỏ ⚓ là Điểm Neo (0,0).</p>
+                      <div className="shape-grid">
+                        {builderGrid.map((row, r) => (
+                          row.map((isSelected, c) => {
+                            const isAnchor = r === 2 && c === 2;
+                            return (
+                              <div
+                                key={`${r}-${c}`}
+                                className={`shape-cell ${isSelected ? 'selected' : ''} ${isAnchor ? 'anchor' : ''}`}
+                                onClick={() => handleCellClick(r, c)}
+                                title={`[${c - 2}, ${r - 2}]`}
+                              >
+                                {isAnchor && '⚓'}
+                              </div>
+                            );
+                          })
+                        ))}
+                      </div>
+                    </div>
                   </div>
 
                   <div className="form-group">

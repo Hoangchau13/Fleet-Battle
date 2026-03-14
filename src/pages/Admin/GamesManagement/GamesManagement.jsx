@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { getLiveMatches } from '../../../api';
 import { Target, Users, Clock, Eye } from 'lucide-react';
+import SpectateModal from './SpectateModal';
 import './GamesManagement.css';
 
 function GamesManagement() {
   const [liveMatches, setLiveMatches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [spectateMatch, setSpectateMatch] = useState(null);
 
   useEffect(() => {
     fetchLiveMatches();
@@ -20,14 +22,14 @@ function GamesManagement() {
       setError(null);
       const response = await getLiveMatches();
       console.log('Live Matches Response:', response);
-      
+
       let matchesData = [];
       if (Array.isArray(response)) {
         matchesData = response;
       } else if (response?.data && Array.isArray(response.data)) {
         matchesData = response.data;
       }
-      
+
       setLiveMatches(matchesData);
     } catch (err) {
       console.error('Error fetching live matches:', err);
@@ -47,22 +49,27 @@ function GamesManagement() {
     return username.substring(0, 2).toUpperCase();
   };
 
-  const formatDuration = (seconds) => {
-    if (!seconds) return '0 min';
-    const minutes = Math.floor(seconds / 60);
-    return `${minutes} min`;
+  const formatDuration = (duration) => {
+    if (!duration) return 'Live';
+    if (typeof duration === 'string') return duration;
+    const minutes = Math.floor(duration / 60);
+    const secs = duration % 60;
+    if (minutes > 0) return `${minutes}m ${secs}s`;
+    return `${secs}s`;
   };
 
   const handleSpectateMatch = (matchId) => {
-    console.log('Spectate match:', matchId);
-    // TODO: Implement spectate functionality
+    const match = liveMatches.find(m => m.matchId === matchId);
+    setSpectateMatch(match || { matchId });
   };
 
-  // Hardcoded stats as requested
+  // Compute stats dynamically from live matches data
   const stats = {
-    activeMatches: 4,
-    activePlayers: 8,
-    avgMatchTime: 22
+    activeMatches: liveMatches.length,
+    activePlayers: liveMatches.length * 2,
+    avgTurns: liveMatches.length > 0
+      ? Math.round(liveMatches.reduce((s, m) => s + (m.turnCount || 0), 0) / liveMatches.length)
+      : 0
   };
 
   return (
@@ -74,47 +81,7 @@ function GamesManagement() {
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="stats-grid-live">
-        <div className="stat-card-live">
-          <div className="stat-header-live">
-            <div className="stat-label-live">Active Matches</div>
-            <div className="stat-icon-wrapper-target-live">
-              <Target size={24} />
-            </div>
-          </div>
-          <div className="stat-content-live">
-            <div className="stat-value-live">{stats.activeMatches}</div>
-            <div className="stat-sublabel-live">Currently playing</div>
-          </div>
-        </div>
 
-        <div className="stat-card-live">
-          <div className="stat-header-live">
-            <div className="stat-label-live">Active Players</div>
-            <div className="stat-icon-wrapper-users-live">
-              <Users size={24} />
-            </div>
-          </div>
-          <div className="stat-content-live">
-            <div className="stat-value-live">{stats.activePlayers}</div>
-            <div className="stat-sublabel-live">In-game right now</div>
-          </div>
-        </div>
-
-        <div className="stat-card-live">
-          <div className="stat-header-live">
-            <div className="stat-label-live">Avg. Match Time</div>
-            <div className="stat-icon-wrapper-clock-live">
-              <Clock size={24} />
-            </div>
-          </div>
-          <div className="stat-content-live">
-            <div className="stat-value-live">{stats.avgMatchTime} min</div>
-            <div className="stat-sublabel-live">Average duration</div>
-          </div>
-        </div>
-      </div>
 
       {/* Error Alert */}
       {error && (
@@ -143,11 +110,11 @@ function GamesManagement() {
               <div className="match-header-live">
                 <div className="status-badge-live-live playing">
                   <span className="status-dot-live"></span>
-                  Playing
+                  {match.status || 'Playing'}
                 </div>
                 <div className="match-duration-live">
                   <Clock size={14} />
-                  {formatDuration(match.duration || match.elapsedTime)}
+                  {formatDuration(match.duration)}
                 </div>
               </div>
 
@@ -156,32 +123,37 @@ function GamesManagement() {
                 {/* Player 1 */}
                 <div className="player-info-live-live">
                   <div className="player-avatar-live">
-                    {getInitials(match.player1Username || match.player1?.username)}
+                    {getInitials(match.player1Name)}
                   </div>
                   <div className="player-details-live-live">
                     <div className="player-name-live">
-                      {match.player1Username || match.player1?.username || 'Player 1'}
+                      {match.player1Name || 'Player 1'}
                     </div>
-                    {match.currentTurn === 1 && (
-                      <div className="current-turn-badge-live">Current turn</div>
+                    {match.player1Elo != null && (
+                      <div className="player-elo-live">⭐ {match.player1Elo} ELO</div>
                     )}
                   </div>
                 </div>
 
                 {/* VS Divider */}
-                <div className="vs-divider-live">VS</div>
+                <div className="vs-divider-live">
+                  <div>VS</div>
+                  {match.turnCount != null && (
+                    <div className="turn-count-live">Turn {match.turnCount}</div>
+                  )}
+                </div>
 
                 {/* Player 2 */}
                 <div className="player-info-live-live">
                   <div className="player-avatar-live player2">
-                    {getInitials(match.player2Username || match.player2?.username)}
+                    {getInitials(match.player2Name)}
                   </div>
                   <div className="player-details-live-live">
                     <div className="player-name-live">
-                      {match.player2Username || match.player2?.username || 'Player 2'}
+                      {match.player2Name || 'Player 2'}
                     </div>
-                    {match.currentTurn === 2 && (
-                      <div className="current-turn-badge-live">Current turn</div>
+                    {match.player2Elo != null && (
+                      <div className="player-elo-live">⭐ {match.player2Elo} ELO</div>
                     )}
                   </div>
                 </div>
@@ -193,17 +165,25 @@ function GamesManagement() {
                   <span className="level-label-live">Level</span>
                   <span className="level-name-live">{match.levelName || 'Standard Battle'}</span>
                 </div>
-                <button 
+                <button
                   className="btn-spectate-live"
                   onClick={() => handleSpectateMatch(match.matchId)}
                 >
                   <Eye size={16} />
-                  Spectate Match
+                  Spectate
                 </button>
               </div>
             </div>
           ))}
         </div>
+      )}
+
+      {/* Spectate Modal */}
+      {spectateMatch && (
+        <SpectateModal
+          match={spectateMatch}
+          onClose={() => setSpectateMatch(null)}
+        />
       )}
     </div>
   );

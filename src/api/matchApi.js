@@ -58,3 +58,9 @@ export const claimTimeout = async (matchId, playerId) => {
   const response = await apiClient.post(`/match/${matchId}/claim-timeout?playerId=${playerId}`);
   return response.data;
 };
+
+// Lấy kết quả trận đấu: GET /api/match/{matchId}/result
+export const getMatchResult = async (matchId) => {
+  const response = await apiClient.get(`/match/${matchId}/result`);
+  return response.data;
+};

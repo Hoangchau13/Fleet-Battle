@@ -41,6 +41,24 @@ export function getMatchHubConnection() {
  * Kết nối (nếu đang ngắt) và invoke RegisterPlayer(playerId).
  * Luôn gọi hàm này ở TỪNG trang cần dùng SignalR (trước khi nhận/gửi data quan trọng).
  */
+/**
+ * Chờ đợi cho đến khi connection ở trạng thái 'Connected'.
+ * Tránh lỗi "Cannot send data if the connection is not in the 'Connected' State".
+ */
+async function waitForConnected(conn, timeoutMs = 10000) {
+  const start = Date.now();
+  while (conn.state !== signalR.HubConnectionState.Connected) {
+    if (Date.now() - start > timeoutMs) {
+      throw new Error('[MatchHub] Timeout waiting for SignalR to connect.');
+    }
+    if (conn.state === signalR.HubConnectionState.Disconnected ||
+        conn.state === signalR.HubConnectionState.Disconnecting) {
+      throw new Error(`[MatchHub] Connection is ${conn.state}, cannot wait.`);
+    }
+    await new Promise(res => setTimeout(res, 100));
+  }
+}
+
 export async function ensureConnectedAndRegistered(playerId) {
   const conn = getMatchHubConnection();
 
@@ -49,6 +67,9 @@ export async function ensureConnectedAndRegistered(playerId) {
     await conn.start();
     _registeredId = null; // Cần đăng ký lại nếu mất kết nối
   }
+
+  // Đợi kết nối hoàn tất (xử lý trường hợp đang 'Connecting')
+  await waitForConnected(conn);
 
   if (_registeredId !== playerId) {
     await conn.invoke('RegisterPlayer', playerId, false);

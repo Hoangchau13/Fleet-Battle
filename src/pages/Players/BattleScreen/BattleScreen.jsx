@@ -155,10 +155,24 @@ export default function BattleScreen() {
   useEffect(() => {
     if (!playerData || !matchId || gameOver) return;
     
-    // Fallback timer: if game status is stuck at waiting and hasn't received turn
+    // Fallback timer: poll server to catch events missed by SignalR (e.g. AFK timeout, game over)
     const fallbackTimer = setTimeout(async () => {
       try {
         const state = await getMatchState(matchId, playerData.playerId);
+        
+        // Check if game ended (AFK timeout, surrender, etc.)
+        const finishedStatuses = ['Finished', 'Ended', 'GameOver', 'Completed'];
+        if (state && finishedStatuses.some(s => state.status?.toLowerCase() === s.toLowerCase())) {
+          console.log('[BattleScreen] Fallback sync: game finished, showing game over.');
+          setGameOver(true);
+          // Determine winner from state.winnerId if available
+          if (state.winnerId !== undefined && state.winnerId !== null) {
+            const isWinner = String(state.winnerId) === String(playerData.playerId);
+            setWinner(isWinner ? 'you' : 'opponent');
+          }
+          return;
+        }
+        
         if (state && state.status === 'Playing') {
           console.log('[BattleScreen] Fallback sync triggered, state:', state);
           const turnId = state.currentTurnPlayerId || state.turnPlayerId;
@@ -318,9 +332,12 @@ export default function BattleScreen() {
 
         const onGameOver = (winnerId, wName) => {
           if (!active) return;
+          console.log('[BattleScreen] ReceiveGameOver:', winnerId, wName);
           setGameOver(true);
           setWinnerName(wName || '');
-          setWinner(String(winnerId) === String(playerData.playerId) ? 'you' : 'opponent');
+          // Cast to string on both sides to avoid type mismatch (number vs string)
+          const isWinner = String(winnerId) === String(playerData.playerId);
+          setWinner(isWinner ? 'you' : 'opponent');
           disconnectMatchHub();
         };
 

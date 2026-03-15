@@ -27,14 +27,24 @@ export default function ShipPlacement() {
   const [playerData, setPlayerData] = useState(null);
   const [boardSize, setBoardSize] = useState(10);
   const [levelId, setLevelId] = useState(null);
-  const [ships, setShips] = useState([]); // [{shipTypeId, name, size, count}]
-  const [grid, setGrid] = useState(buildEmptyGrid(10));
-  const [placedShips, setPlacedShips] = useState([]); // [{shipTypeId, x, y, rotation}]
+  
+  const getPersisted = (key, defaultVal) => {
+    try {
+      const val = sessionStorage.getItem(`shipplacement_${matchId}_${key}`);
+      return val ? JSON.parse(val) : defaultVal;
+    } catch {
+      return defaultVal;
+    }
+  };
+
+  const [ships, setShips] = useState(() => getPersisted('ships', [])); // [{shipTypeId, name, size, count}]
+  const [grid, setGrid] = useState(() => getPersisted('grid', buildEmptyGrid(10)));
+  const [placedShips, setPlacedShips] = useState(() => getPersisted('placedShips', [])); // [{shipTypeId, x, y, rotation}]
+  const [submitDone, setSubmitDone] = useState(() => getPersisted('submitDone', false));
   const [selectedShip, setSelectedShip] = useState(null); // ship type being placed
   const [rotation, setRotation] = useState(0);
   const [hoverCell, setHoverCell] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitDone, setSubmitDone] = useState(false);
   const [error, setError] = useState('');
   const connectionRef = useRef(null);
 
@@ -75,6 +85,16 @@ export default function ShipPlacement() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  // Save to persistence whenever important state changes
+  useEffect(() => {
+    if (matchId) {
+      sessionStorage.setItem(`shipplacement_${matchId}_ships`, JSON.stringify(ships));
+      sessionStorage.setItem(`shipplacement_${matchId}_grid`, JSON.stringify(grid));
+      sessionStorage.setItem(`shipplacement_${matchId}_placedShips`, JSON.stringify(placedShips));
+      sessionStorage.setItem(`shipplacement_${matchId}_submitDone`, JSON.stringify(submitDone));
+    }
+  }, [ships, grid, placedShips, submitDone, matchId]);
+
   // Load match state → levelId → game config (ships + board size)
   useEffect(() => {
     if (!playerData || !matchId) return;
@@ -98,21 +118,38 @@ export default function ShipPlacement() {
 
         const size = config?.boardSize || 10;
         setBoardSize(size);
-        setGrid(buildEmptyGrid(size));
+        
+        // Only override state from config if not loaded from session storage
+        const savedPlacedShips = getPersisted('placedShips', []);
+        if (savedPlacedShips.length === 0) {
+          setGrid(buildEmptyGrid(size));
+        }
 
         // config.ships: [{shipTypeId, shipName, size, count, shapePattern}] (or similar)
         const rawShips = config?.ships || config?.shipTypes || [];
-        setShips(rawShips.map(s => {
+        
+        // If ships from session aren't empty, try to retain the `remaining` status
+        const persistedShips = getPersisted('ships', []);
+        
+        const initialShips = rawShips.map(s => {
           const typeId = s.shipTypeId ?? s.id;
           const fullShipData = shipsArray.find(st => st.shipTypeId === typeId);
+          
+          const defaultCount = s.count ?? s.quantity ?? 1;
+          const persistedShip = persistedShips.find(ps => ps.shipTypeId === typeId);
+          const remaining = persistedShip ? persistedShip.remaining : defaultCount;
+          
           return {
             shipTypeId: typeId,
             name: s.shipName ?? s.name ?? fullShipData?.shipName ?? `Ship ${typeId}`,
             size: s.size ?? s.shipSize ?? fullShipData?.size ?? 1,
             shapePattern: s.shapePattern ?? s.shipType?.shapePattern ?? fullShipData?.shapePattern ?? null,
-            remaining: s.count ?? s.quantity ?? 1,
+            remaining: remaining,
+            originalCount: defaultCount, // keep original count for resets
           };
-        }));
+        });
+        
+        setShips(initialShips);
       } catch (err) {
         console.error('Failed to load level config:', err);
         // Fallback: 10x10 with demo ships
@@ -129,6 +166,33 @@ export default function ShipPlacement() {
     };
     load();
   }, [playerData, matchId]);
+
+  // Fallback Polling: Ensure navigation to BattleScreen even if SignalR event is missed
+  useEffect(() => {
+    if (!submitDone || !matchId || !playerData) return;
+    
+    let active = true;
+    const checkState = async () => {
+      try {
+        const state = await getMatchState(matchId, playerData.playerId);
+        if (active && state?.status === 'Playing') {
+          console.log('[ShipPlacement] Fallback sync: Game is Playing, navigating to BattleScreen...');
+          navigate(`/battle/${matchId}/${userId}/${serverId}`, { state: { starterPlayerId: state.turnPlayerId || state.currentTurnPlayerId } });
+        }
+      } catch (err) {
+        // Suppress errors during polling
+      }
+    };
+    
+    // Check immediately then poll every 3 seconds
+    checkState();
+    const intervalId = setInterval(checkState, 3000);
+    
+    return () => {
+      active = false;
+      clearInterval(intervalId);
+    };
+  }, [submitDone, matchId, playerData, navigate, userId, serverId]);
 
   // ── SignalR: Singleton – Lắng nghe ReceiveGameStarted → BattleScreen ─
   useEffect(() => {
@@ -256,9 +320,9 @@ export default function ShipPlacement() {
     setGrid(buildEmptyGrid(boardSize));
     setPlacedShips([]);
     setShips(prev => prev.map(s => {
-      // restore remaining from original count — use placed ships to compute
-      const placed = placedShips.filter(p => p.shipTypeId === s.shipTypeId).length;
-      return { ...s, remaining: s.remaining + placed };
+      // restore remaining from original count if available, else standard fallback
+      const originalCount = s.originalCount ?? (s.remaining + placedShips.filter(p => p.shipTypeId === s.shipTypeId).length);
+      return { ...s, remaining: originalCount };
     }));
     setSelectedShip(null);
     setSubmitDone(false);

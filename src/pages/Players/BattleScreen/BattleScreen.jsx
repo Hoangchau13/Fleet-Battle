@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { Target, Zap, Shield, Trophy, Clock, Flag, AlertTriangle } from 'lucide-react';
-import { getPlayerProfileByUserAndServer } from '../../../api';
+import { getPlayerProfileByUserAndServer, getGameConfig } from '../../../api';
 import { fireShot, getMatchState, surrenderMatch, claimTimeout } from '../../../api/matchApi';
 import { ensureConnectedAndRegistered, disconnectMatchHub } from '../../../hooks/matchHubConnection';
 
@@ -20,8 +20,9 @@ export default function BattleScreen() {
   const starterPlayerIdFromState = location.state?.starterPlayerId;
 
   const [playerData, setPlayerData] = useState(null);
-  const [myGrid, setMyGrid] = useState(buildGrid());
-  const [opponentGrid, setOpponentGrid] = useState(buildGrid());
+  const [boardSize, setBoardSize] = useState(10);
+  const [myGrid, setMyGrid] = useState(() => buildGrid(10));
+  const [opponentGrid, setOpponentGrid] = useState(() => buildGrid(10));
   const [isMyTurn, setIsMyTurn] = useState(false);
   const [gameOver, setGameOver] = useState(false);
   const [winner, setWinner] = useState(null);
@@ -40,20 +41,87 @@ export default function BattleScreen() {
   const isMyTurnRef = useRef(isMyTurn);
   useEffect(() => { isMyTurnRef.current = isMyTurn; }, [isMyTurn]);
 
-  // ── Fetch player profile ───────────────────────────────────────────
+  // ── Fetch player profile & game config ────────────────────────────
   useEffect(() => {
-    if (!userId || !serverId) { navigate('/server-selection'); return; }
+    if (!userId || !serverId || !matchId) { navigate('/server-selection'); return; }
 
-    getPlayerProfileByUserAndServer(userId, serverId)
-      .then(profile => {
-        if (profile) setPlayerData(profile);
-        else navigate('/server-selection');
-      })
-      .catch(err => {
+    const init = async () => {
+      try {
+        const profile = await getPlayerProfileByUserAndServer(userId, serverId);
+        if (!profile) {
+          navigate('/server-selection');
+          return;
+        }
+
+        try {
+          const state = await getMatchState(matchId, profile.playerId);
+          const lvlId = state?.levelId || 1;
+          const config = await getGameConfig(lvlId);
+          const size = config?.boardSize || 10;
+          setBoardSize(size);
+          setMyGrid(buildGrid(size));
+          setOpponentGrid(buildGrid(size));
+        } catch (err) {
+          console.error('[BattleScreen] fetch custom grid config error:', err);
+        }
+
+        // Set player data after grid sizes are ready so SignalR hooks bind properly
+        setPlayerData(profile);
+        // Call fallback sync immediately to restore grid data on hard reload
+        await fetchAndRestoreState(matchId, profile.playerId);
+      } catch (err) {
         console.error('[BattleScreen] fetchProfile error:', err);
         navigate('/server-selection');
-      });
-  }, [userId, serverId, navigate]);
+      }
+    };
+
+    const fetchAndRestoreState = async (mId, pId) => {
+      try {
+        const state = await getMatchState(mId, pId);
+        if (state && state.status === 'Playing') {
+          console.log('[BattleScreen] Initial sync successful, state:', state);
+          const turnId = state.currentTurnPlayerId || state.turnPlayerId;
+          if (turnId) {
+            const isMine = String(turnId) === String(pId);
+            setIsMyTurn(isMine);
+            setStatusMessage(isMine ? 'Your turn! Click to fire.' : "Opponent's turn...");
+          }
+           
+          if (state.myBoard?.grid) {
+            setMyGrid(prev => {
+              const next = prev.map(r => r.map(c => ({ ...c })));
+              state.myBoard.grid.forEach(cell => {
+                const { x, y, status } = cell;
+                if (x >= 0 && y >= 0 && y < next.length && x < next[0].length) {
+                  if (status === 'Hit' || status === 'Sunk' || status === 1) next[y][x] = { ...next[y][x], state: 'hit' };
+                  else if (status === 'Miss' || status === 2) next[y][x] = { ...next[y][x], state: 'miss' };
+                  else if (status === 'Ship' || status === 3) next[y][x] = { ...next[y][x], state: 'ship' };
+                }
+              });
+              return next;
+            });
+          }
+          if (state.opponentBoard?.grid) {
+            setOpponentGrid(prev => {
+              const next = prev.map(r => r.map(c => ({ ...c })));
+              state.opponentBoard.grid.forEach(cell => {
+                const { x, y, status } = cell;
+                if (x >= 0 && y >= 0 && y < next.length && x < next[0].length) {
+                  if (status === 'Hit' || status === 'Sunk' || status === 1) next[y][x] = { ...next[y][x], state: 'hit' };
+                  else if (status === 'Miss' || status === 2) next[y][x] = { ...next[y][x], state: 'miss' };
+                }
+              });
+              return next;
+            });
+          }
+        }
+      } catch(err) {
+         console.error('[BattleScreen] Initial sync error:', err);
+      }
+    };
+
+    init();
+  }, [userId, serverId, matchId, navigate]);
 
   useEffect(() => () => clearTimeout(toastTimer.current), []);
 
@@ -105,13 +173,10 @@ export default function BattleScreen() {
               const next = prev.map(r => r.map(c => ({ ...c })));
               state.myBoard.grid.forEach(cell => {
                 const { x, y, status } = cell;
-                if (x >= 0 && y >= 0) {
-                  const stateMap = {
-                    'Hit': 'hit',
-                    'Miss': 'miss', 
-                  };
-                  if (status === 'Hit' || status === 'Sunk') next[y][x] = { state: 'hit' };
-                  else if (status === 'Miss') next[y][x] = { state: 'miss' };
+                if (x >= 0 && y >= 0 && y < next.length && x < next[0].length) {
+                  if (status === 'Hit' || status === 'Sunk' || status === 1) next[y][x] = { ...next[y][x], state: 'hit' };
+                  else if (status === 'Miss' || status === 2) next[y][x] = { ...next[y][x], state: 'miss' };
+                  else if (status === 'Ship' || status === 3) next[y][x] = { ...next[y][x], state: 'ship' };
                 }
               });
               return next;
@@ -122,9 +187,9 @@ export default function BattleScreen() {
               const next = prev.map(r => r.map(c => ({ ...c })));
               state.opponentBoard.grid.forEach(cell => {
                 const { x, y, status } = cell;
-                if (x >= 0 && y >= 0) {
-                  if (status === 'Hit' || status === 'Sunk') next[y][x] = { state: 'hit' };
-                  else if (status === 'Miss') next[y][x] = { state: 'miss' };
+                if (x >= 0 && y >= 0 && y < next.length && x < next[0].length) {
+                  if (status === 'Hit' || status === 'Sunk' || status === 1) next[y][x] = { ...next[y][x], state: 'hit' };
+                  else if (status === 'Miss' || status === 2) next[y][x] = { ...next[y][x], state: 'miss' };
                 }
               });
               return next;
@@ -134,7 +199,7 @@ export default function BattleScreen() {
       } catch(err) {
          console.error('[BattleScreen] Fallback sync error:', err);
       }
-    }, 5000); // 5s fallback
+    }, 10000); // Only run after 10s if everything is suspiciously quiet
 
     return () => clearTimeout(fallbackTimer);
   }, [playerData, matchId, gameOver]);
@@ -166,9 +231,10 @@ export default function BattleScreen() {
               const next = prev.map(r => r.map(c => ({ ...c })));
               gameState.myBoard.grid.forEach(cell => {
                 const { x, y, status } = cell;
-                if (x >= 0 && y >= 0) {
-                  if (status === 'Hit' || status === 'Sunk') next[y][x] = { state: 'hit' };
-                  else if (status === 'Miss') next[y][x] = { state: 'miss' };
+                if (x >= 0 && y >= 0 && y < next.length && x < next[0].length) {
+                  if (status === 'Hit' || status === 'Sunk' || status === 1) next[y][x] = { ...next[y][x], state: 'hit' };
+                  else if (status === 'Miss' || status === 2) next[y][x] = { ...next[y][x], state: 'miss' };
+                  else if (status === 'Ship' || status === 3) next[y][x] = { ...next[y][x], state: 'ship' };
                 }
               });
               return next;
@@ -179,9 +245,9 @@ export default function BattleScreen() {
               const next = prev.map(r => r.map(c => ({ ...c })));
               gameState.opponentBoard.grid.forEach(cell => {
                 const { x, y, status } = cell;
-                if (x >= 0 && y >= 0) {
-                  if (status === 'Hit' || status === 'Sunk') next[y][x] = { state: 'hit' };
-                  else if (status === 'Miss') next[y][x] = { state: 'miss' };
+                if (x >= 0 && y >= 0 && y < next.length && x < next[0].length) {
+                  if (status === 'Hit' || status === 'Sunk' || status === 1) next[y][x] = { ...next[y][x], state: 'hit' };
+                  else if (status === 'Miss' || status === 2) next[y][x] = { ...next[y][x], state: 'miss' };
                 }
               });
               return next;
@@ -197,28 +263,56 @@ export default function BattleScreen() {
           setTimeLeft(30);
         };
 
-        const onShotResult = (shotResult) => {
+        const onShotResult = async (shotResult) => {
           if (!active) return;
           setTimeLeft(30);
           console.log('[BattleScreen] ReceiveShotResult:', shotResult);
           
-          const { x, y, result, isGameOver, sunkShipTypeId } = shotResult;
-          
-          // Chúng ta không có turnPlayerId trong ReceiveShotResult. 
-          // Việc cập nhật grid phụ thuộc vào việc ai vừa firing.
-          // Tốt nhất chỉ cập nhật hiệu ứng ở đây nếu cần, hoặc chờ ReceiveGameState.
-          // Tuy nhiên, đối với trải nghiệm mượt mà, ta có thể dựa vào isMyTurnRef để phỏng đoán:
-          // Nếu ĐANG là lượt của đối thủ (tức là ta đang chờ), viên đạn này là của đối thủ bắn vào mình.
-          if (!isMyTurnRef.current) {
-            setMyGrid(prev => {
-              const next = prev.map(r => r.map(c => ({ ...c })));
-              if (y >= 0 && y < next.length && x >= 0 && x < next[0].length) {
-                next[y][x] = { state: result === 'Miss' ? 'miss' : 'hit' };
-              }
-              return next;
-            });
+          const { isGameOver } = shotResult;
+
+          // Re-sync both grids from API after every shot — this is the most reliable approach.
+          // We cannot trust isMyTurnRef to know who fired, so we just ask the server for truth.
+          try {
+            const state = await getMatchState(matchId, playerData.playerId);
+            if (!active) return;
+            
+            if (state?.myBoard?.grid) {
+              setMyGrid(prev => {
+                const next = prev.map(r => r.map(c => ({ ...c })));
+                state.myBoard.grid.forEach(cell => {
+                  const { x, y, status } = cell;
+                  if (x >= 0 && y >= 0 && y < next.length && x < next[0].length) {
+                    if (status === 'Hit' || status === 'Sunk' || status === 1) next[y][x] = { ...next[y][x], state: 'hit' };
+                    else if (status === 'Miss' || status === 2) next[y][x] = { ...next[y][x], state: 'miss' };
+                    else if (status === 'Ship' || status === 3) next[y][x] = { ...next[y][x], state: 'ship' };
+                  }
+                });
+                return next;
+              });
+            }
+            if (state?.opponentBoard?.grid) {
+              setOpponentGrid(prev => {
+                const next = prev.map(r => r.map(c => ({ ...c })));
+                state.opponentBoard.grid.forEach(cell => {
+                  const { x, y, status } = cell;
+                  if (x >= 0 && y >= 0 && y < next.length && x < next[0].length) {
+                    if (status === 'Hit' || status === 'Sunk' || status === 1) next[y][x] = { ...next[y][x], state: 'hit' };
+                    else if (status === 'Miss' || status === 2) next[y][x] = { ...next[y][x], state: 'miss' };
+                  }
+                });
+                return next;
+              });
+            }
+            const turnId = state?.currentTurnPlayerId || state?.turnPlayerId;
+            if (turnId) {
+              const isMine = String(turnId) === String(playerData.playerId);
+              setIsMyTurn(isMine);
+              setStatusMessage(isMine ? 'Your turn! Click to fire.' : "Opponent's turn...");
+            }
+          } catch (err) {
+            console.error('[BattleScreen] onShotResult sync error:', err);
           }
-          
+
           if (isGameOver) setGameOver(true);
         };
 
@@ -288,6 +382,7 @@ export default function BattleScreen() {
       setOpponentGrid(prev => {
         const next = prev.map(r => r.map(c => ({ ...c })));
         next[row][col] = {
+          ...next[row][col],
           state: result.result === 'Miss' ? 'miss' : 'hit',
           sunk: result.result === 'Sunk',
         };
@@ -370,6 +465,7 @@ export default function BattleScreen() {
     } else {
       if (cell.state === 'hit') bg = 'bg-red-500/80';
       else if (cell.state === 'miss') bg = 'bg-gray-500/40';
+      else if (cell.state === 'ship') bg = 'bg-green-500/80';
     }
     return (
       <div

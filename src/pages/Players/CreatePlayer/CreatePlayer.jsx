@@ -55,30 +55,21 @@ function CreatePlayer() {
       });
 
       console.log('Player creation response:', response);
-      
-      // Determine what the API returned (hopefully the new player object or an ID)
-      // Fallbacks included just in case
-      const createdPlayerId = response?.playerId || response?.id || null;
-      
+
+      // Dùng thẳng dữ liệu backend trả về: playerId, userId, groupId, groupName, displayName, elo, exp
       const newPlayer = {
-        id: createdPlayerId || Date.now(), // Fallback if API doesn't return ID
-        playerId: createdPlayerId,
-        displayName: displayName.trim(),
-        username: displayName.trim(),
-        serverId: parseInt(serverId),
-        rank: 'Rookie',
-        rankLevel: 1,
-        eloScore: 1000,
-        createdAt: new Date().toISOString()
+        playerId: response.playerId,
+        userId: response.userId,
+        groupId: response.groupId,
+        groupName: response.groupName,
+        displayName: response.displayName,
+        eloScore: response.elo,
+        exp: response.exp,
       };
 
-      // Save player data for this server
-      const playerDataKey = `player_server_${serverId}`;
-      localStorage.setItem(playerDataKey, JSON.stringify(newPlayer));
-      localStorage.setItem('currentPlayer', JSON.stringify(newPlayer));
-
+      // Save player data for this server (Removed as per requirement to not use localStorage)
       setIsCreating(false);
-      navigate('/home');
+      navigate(`/home/${response.userId}/${response.groupId}`);
     } catch (err) {
       console.error('Error creating player:', err);
       // More specific error handling if the API returns validation errors
@@ -158,8 +149,7 @@ function CreatePlayer() {
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
               <h3 className="text-sm font-semibold text-blue-900 mb-2">Player Information</h3>
               <ul className="text-xs text-blue-700 space-y-1">
-                <li>• Starting ELO: 1000</li>
-                <li>• Starting Rank: Rookie</li>
+                <li>• Starting ELO: 100</li>
                 <li>• Display name can be changed later</li>
                 <li>• Each server has separate player profiles</li>
               </ul>

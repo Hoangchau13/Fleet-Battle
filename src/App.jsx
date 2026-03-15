@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { BrowserRouter as Router, Routes, Route, Navigate} from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import './App.css'
 import Sidebar from './components/Admin/Sidebar'
 import ProtectedRoute from './components/Admin/ProtectedRoute'
@@ -13,20 +13,15 @@ import GamesManagement from './pages/Admin/GamesManagement/GamesManagement'
 import ServerSelection from './pages/Players/ServerSelection/ServerSelection'
 import CreatePlayer from './pages/Players/CreatePlayer/CreatePlayer'
 import HomePage from './pages/Players/HomePage/HomePage'
-import GameModes from './pages/Players/GameModes/GameModes'
-import Lobby from './pages/Players/Lobby/Lobby'
-import WaitingRoom from './pages/Players/WaitingRoom/WaitingRoom'
-import VRTransition from './pages/Players/VRTransition/VRTransition'
-import WatchMatch from './pages/Players/WatchMatch/WatchMatch'
+import MatchRoom from './pages/Players/MatchRoom/MatchRoom'
 import ShipPlacement from './pages/Players/ShipPlacement/ShipPlacement'
 import BattleScreen from './pages/Players/BattleScreen/BattleScreen'
 import GameOver from './pages/Players/GameOver/GameOver'
 
-function AdminLayout({ isSidebarOpen}) {
+function AdminLayout({ isSidebarOpen }) {
   return (
     <div className="dashboard">
       <Sidebar isOpen={isSidebarOpen} />
-
       <main className={`main-content ${!isSidebarOpen ? 'sidebar-closed' : ''}`}>
         <div className="content">
           <Routes>
@@ -46,8 +41,7 @@ function AdminLayout({ isSidebarOpen}) {
 
 function App() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
-  
-  // Get initial user role from localStorage immediately
+
   const getUserRole = () => {
     const userData = localStorage.getItem('user')
     if (userData) {
@@ -65,69 +59,50 @@ function App() {
   const [userRole, setUserRole] = useState(getUserRole())
 
   useEffect(() => {
-    // Update user role function
     const updateUserRole = () => {
       const role = getUserRole()
-      console.log('Updating user role:', role) // Debug log
+      console.log('Updating user role:', role)
       setUserRole(role)
     }
-
-    // Listen for storage changes (when user logs in)
     window.addEventListener('storage', updateUserRole)
-    
-    // Listen for custom login event
     window.addEventListener('userLogin', updateUserRole)
-
     return () => {
       window.removeEventListener('storage', updateUserRole)
       window.removeEventListener('userLogin', updateUserRole)
     }
   }, [])
 
-  const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen)
-  }
-
   const isPlayer = userRole === 'Player'
   const isAdmin = userRole === 'Admin' || userRole === 'SuperAdmin' || userRole === 'Superadmin'
-  
-  console.log('Current user role:', userRole, 'isPlayer:', isPlayer, 'isAdmin:', isAdmin) // Debug log
+
+  console.log('Current user role:', userRole, 'isPlayer:', isPlayer, 'isAdmin:', isAdmin)
 
   return (
     <Router>
       <Routes>
-        {/* Public route - Login */}
         <Route path="/login" element={<Login />} />
-
-        {/* Protected routes */}
         <Route
           path="/*"
           element={
             <ProtectedRoute>
               {isPlayer ? (
-                // Player layout - No sidebar
                 <div className="player-layout">
                   <div className="player-content">
                     <Routes>
                       <Route path="/" element={<ServerSelection />} />
                       <Route path="/server-selection" element={<ServerSelection />} />
                       <Route path="/create-player" element={<CreatePlayer />} />
-                      <Route path="/home" element={<HomePage />} />
-                      <Route path="/game-modes" element={<GameModes />} />
-                      <Route path="/lobby" element={<Lobby />} />
-                      <Route path="/waiting-room/:roomId" element={<WaitingRoom />} />
-                      <Route path="/vr-transition/:roomId" element={<VRTransition />} />
-                      <Route path="/watch-match/:roomId" element={<WatchMatch />} />
-                      <Route path="/ship-placement/:roomId" element={<ShipPlacement />} />
-                      <Route path="/battle/:roomId" element={<BattleScreen />} />
-                      <Route path="/game-over/:roomId" element={<GameOver />} />
+                      <Route path="/home/:userId/:serverId" element={<HomePage />} />
+                      <Route path="/match-room/:matchId/:userId/:serverId" element={<MatchRoom />} />
+                      <Route path="/ship-placement/:matchId/:userId/:serverId" element={<ShipPlacement />} />
+                      <Route path="/battle/:matchId/:userId/:serverId" element={<BattleScreen />} />
+                      <Route path="/game-over/:matchId/:userId/:serverId" element={<GameOver />} />
                       <Route path="*" element={<Navigate to="/server-selection" replace />} />
                     </Routes>
                   </div>
                 </div>
               ) : (
-                // Admin layout - With sidebar
-                <AdminLayout isSidebarOpen={isSidebarOpen} toggleSidebar={toggleSidebar} />
+                <AdminLayout isSidebarOpen={isSidebarOpen} />
               )}
             </ProtectedRoute>
           }

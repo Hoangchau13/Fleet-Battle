@@ -13,6 +13,7 @@ export * from './healthApi';
 export * from './dashboardApi';
 export * from './worldApi';
 export * from './vrApi';
+export * from './matchApi';
 
 // Export axios instance nếu cần sử dụng trực tiếp
 export { default as apiClient } from './axios.config';

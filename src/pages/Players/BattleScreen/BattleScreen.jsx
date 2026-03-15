@@ -1,398 +1,449 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { Ship, Target, Zap, Trophy } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import { Target, Zap, Shield, Trophy, Clock, Flag } from 'lucide-react';
+import { getPlayerProfileByUserAndServer } from '../../../api';
+import { fireShot, getMatchState, surrenderMatch } from '../../../api/matchApi';
+import { ensureConnectedAndRegistered, disconnectMatchHub } from '../../../hooks/matchHubConnection';
 
-const GRID_SIZE = 9;
+const GRID_SIZE = 10;
+
+function buildGrid(size = GRID_SIZE) {
+  return Array(size).fill(null).map(() =>
+    Array(size).fill(null).map(() => ({ state: 'unknown' }))
+  );
+}
 
 export default function BattleScreen() {
-  const { roomId } = useParams();
+  const { matchId, userId, serverId } = useParams();
   const navigate = useNavigate();
-  
-  // Mock player grid with ships
-  const [playerGrid, setPlayerGrid] = useState(() => {
-    const grid = Array(GRID_SIZE).fill(null).map(() => 
-      Array(GRID_SIZE).fill(null).map(() => ({ ship: null, hit: false }))
-    );
-    // Place mock ships
-    for (let i = 0; i < 5; i++) grid[0][i] = { ship: 'carrier', hit: false };
-    for (let i = 0; i < 4; i++) grid[2][i] = { ship: 'battleship', hit: false };
-    for (let i = 0; i < 3; i++) grid[4][i] = { ship: 'cruiser', hit: false };
-    for (let i = 0; i < 2; i++) grid[6][i] = { ship: 'destroyer', hit: false };
-    return grid;
-  });
+  const location = useLocation();
+  const starterPlayerIdFromState = location.state?.starterPlayerId;
 
-  // Opponent grid (hidden ships, only shows shots)
-  const [opponentGrid, setOpponentGrid] = useState(
-    Array(GRID_SIZE).fill(null).map(() => 
-      Array(GRID_SIZE).fill(null).map(() => ({ hit: false, miss: false }))
-    )
-  );
-
-  const [isPlayerTurn, setIsPlayerTurn] = useState(true);
-  const [stats, setStats] = useState({
-    playerShots: 0,
-    playerHits: 0,
-    playerMisses: 0,
-    opponentShots: 0,
-    opponentHits: 0,
-  });
-
-  const [ships, setShips] = useState({
-    player: {
-      carrier: { total: 5, hits: 0, sunk: false },
-      battleship: { total: 4, hits: 0, sunk: false },
-      cruiser: { total: 3, hits: 0, sunk: false },
-      destroyer: { total: 2, hits: 0, sunk: false },
-    },
-    opponent: {
-      carrier: { total: 5, hits: 0, sunk: false },
-      battleship: { total: 4, hits: 0, sunk: false },
-      cruiser: { total: 3, hits: 0, sunk: false },
-      destroyer: { total: 2, hits: 0, sunk: false },
-    },
-  });
-
-  const [lastShot, setLastShot] = useState(null);
+  const [playerData, setPlayerData] = useState(null);
+  const [myGrid, setMyGrid] = useState(buildGrid());
+  const [opponentGrid, setOpponentGrid] = useState(buildGrid());
+  const [isMyTurn, setIsMyTurn] = useState(false);
   const [gameOver, setGameOver] = useState(false);
+  const [winner, setWinner] = useState(null);
+  const [winnerName, setWinnerName] = useState('');
+  const [lastShotResult, setLastShotResult] = useState(null);
+  const [turnCount, setTurnCount] = useState(1);
+  const [isFiring, setIsFiring] = useState(false);
+  const [myShots, setMyShots] = useState(0);
+  const [myHits, setMyHits] = useState(0);
+  const [statusMessage, setStatusMessage] = useState('Waiting for game to start...');
+  const toastTimer = useRef(null);
+  // keep isMyTurn in a ref for use inside event handlers without re-registering
+  const isMyTurnRef = useRef(isMyTurn);
+  useEffect(() => { isMyTurnRef.current = isMyTurn; }, [isMyTurn]);
 
-  // Mock opponent ships (hidden from player)
-  const opponentShipsHidden = useState(() => {
-    const grid = Array(GRID_SIZE).fill(null).map(() => 
-      Array(GRID_SIZE).fill(null).map(() => null)
-    );
-    // Place mock opponent ships
-    for (let i = 0; i < 5; i++) grid[1][i + 2] = 'carrier';
-    for (let i = 0; i < 4; i++) grid[3][i + 3] = 'battleship';
-    for (let i = 0; i < 3; i++) grid[5][i + 1] = 'cruiser';
-    for (let i = 0; i < 2; i++) grid[7][i + 4] = 'destroyer';
-    return grid;
-  })[0];
-
-  // Simulate opponent turn
+  // ── Fetch player profile ───────────────────────────────────────────
   useEffect(() => {
-    if (!isPlayerTurn && !gameOver) {
-      const timer = setTimeout(() => {
-        // Random shot
-        let row, col;
-        do {
-          row = Math.floor(Math.random() * GRID_SIZE);
-          col = Math.floor(Math.random() * GRID_SIZE);
-        } while (playerGrid[row][col].hit);
+    if (!userId || !serverId) { navigate('/server-selection'); return; }
 
-        const newPlayerGrid = playerGrid.map(r => r.map(c => ({...c})));
-        newPlayerGrid[row][col].hit = true;
+    getPlayerProfileByUserAndServer(userId, serverId)
+      .then(profile => {
+        if (profile) setPlayerData(profile);
+        else navigate('/server-selection');
+      })
+      .catch(err => {
+        console.error('[BattleScreen] fetchProfile error:', err);
+        navigate('/server-selection');
+      });
+  }, [userId, serverId, navigate]);
 
-        const isHit = newPlayerGrid[row][col].ship !== null;
-        
-        setPlayerGrid(newPlayerGrid);
-        setStats(prev => ({
-          ...prev,
-          opponentShots: prev.opponentShots + 1,
-          opponentHits: prev.opponentHits + (isHit ? 1 : 0),
-        }));
+  useEffect(() => () => clearTimeout(toastTimer.current), []);
 
-        if (isHit) {
-          const shipType = newPlayerGrid[row][col].ship;
-          const newShips = { ...ships };
-          newShips.player[shipType].hits += 1;
-          if (newShips.player[shipType].hits >= newShips.player[shipType].total) {
-            newShips.player[shipType].sunk = true;
+  const showToast = useCallback((result) => {
+    setLastShotResult(result);
+    clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setLastShotResult(null), 2500);
+  }, []);
+
+  // ── Initial Turn from State ────────────────────────────────────────
+  useEffect(() => {
+    if (playerData && starterPlayerIdFromState && !gameOver) {
+       console.log('[BattleScreen] Setting initial turn from state:', starterPlayerIdFromState);
+       const isMine = String(starterPlayerIdFromState) === String(playerData.playerId);
+       setIsMyTurn(isMine);
+       setStatusMessage(isMine ? '⚔️ You go first! Click to fire.' : '⏳ Opponent goes first...');
+    }
+  }, [playerData, starterPlayerIdFromState, gameOver]);
+
+  // ── Fallback Sync Mechanism ────────────────────────────────────────
+  useEffect(() => {
+    if (!playerData || !matchId || gameOver) return;
+    
+    // Fallback timer: if game status is stuck at waiting and hasn't received turn
+    const fallbackTimer = setTimeout(async () => {
+      try {
+        const state = await getMatchState(matchId, playerData.playerId);
+        if (state && (state.status === 'Playing' || state.turnPlayerId)) {
+          console.log('[BattleScreen] Fallback sync triggered, state:', state);
+          if (state.turnPlayerId) {
+            const isMine = String(state.turnPlayerId) === String(playerData.playerId);
+            setIsMyTurn(isMine);
+            setStatusMessage(isMine ? 'Your turn! Click to fire.' : "Opponent's turn...");
           }
-          setShips(newShips);
-
-          // Check if player lost
-          if (Object.values(newShips.player).every(s => s.sunk)) {
-            setGameOver(true);
-            setTimeout(() => navigate(`/game-over/${roomId}?winner=opponent`), 2000);
+          
+          if (state.myBoard?.cells) {
+            setMyGrid(prev => {
+              const next = prev.map(r => r.map(c => ({ ...c })));
+              state.myBoard.cells.forEach(cell => {
+                if (cell.row >= 0 && cell.col >= 0) {
+                  next[cell.row][cell.col] = { state: cell.isHit ? 'hit' : (cell.isMiss ? 'miss' : 'unknown') };
+                }
+              });
+              return next;
+            });
+          }
+          if (state.opponentBoard?.cells) {
+            setOpponentGrid(prev => {
+              const next = prev.map(r => r.map(c => ({ ...c })));
+              state.opponentBoard.cells.forEach(cell => {
+                if (cell.row >= 0 && cell.col >= 0 && (cell.isHit || cell.isMiss)) {
+                  next[cell.row][cell.col] = { state: cell.isHit ? 'hit' : 'miss' };
+                }
+              });
+              return next;
+            });
           }
         }
-
-        setIsPlayerTurn(true);
-      }, 2000);
-
-      return () => clearTimeout(timer);
-    }
-  }, [isPlayerTurn, gameOver, playerGrid, ships, navigate, roomId]);
-
-  const handleCellClick = (row, col) => {
-    if (!isPlayerTurn || gameOver) return;
-    if (opponentGrid[row][col].hit || opponentGrid[row][col].miss) return;
-
-    const newOpponentGrid = opponentGrid.map(r => r.map(c => ({...c})));
-    const isHit = opponentShipsHidden[row][col] !== null;
-
-    if (isHit) {
-      newOpponentGrid[row][col].hit = true;
-      const shipType = opponentShipsHidden[row][col];
-      
-      const newShips = { ...ships };
-      newShips.opponent[shipType].hits += 1;
-      if (newShips.opponent[shipType].hits >= newShips.opponent[shipType].total) {
-        newShips.opponent[shipType].sunk = true;
-        setLastShot({ type: 'sunk', ship: shipType });
-      } else {
-        setLastShot({ type: 'hit' });
+      } catch(err) {
+         console.error('[BattleScreen] Fallback sync error:', err);
       }
-      setShips(newShips);
+    }, 5000); // 5s fallback
 
-      // Check if opponent lost
-      if (Object.values(newShips.opponent).every(s => s.sunk)) {
+    return () => clearTimeout(fallbackTimer);
+  }, [playerData, matchId, gameOver]);
+
+  // ── SignalR: Singleton connection + events ─────────────────────────
+  useEffect(() => {
+    if (!playerData) return;
+    let active = true;
+    let cleanup = null;
+
+    const setup = async () => {
+      try {
+        const conn = await ensureConnectedAndRegistered(playerData.playerId);
+
+        const onGameState = (gameState) => {
+          if (!active) return;
+          if (gameState?.turnPlayerId) {
+            const isMine = gameState.turnPlayerId === playerData.playerId;
+            setIsMyTurn(isMine);
+            setStatusMessage(isMine ? 'Your turn! Click to fire.' : "Opponent's turn...");
+          }
+          if (gameState?.myBoard?.cells) {
+            setMyGrid(prev => {
+              const next = prev.map(r => r.map(c => ({ ...c })));
+              gameState.myBoard.cells.forEach(cell => {
+                if (cell.row >= 0 && cell.col >= 0) {
+                  next[cell.row][cell.col] = { state: cell.isHit ? 'hit' : (cell.isMiss ? 'miss' : 'unknown') };
+                }
+              });
+              return next;
+            });
+          }
+          if (gameState?.opponentBoard?.cells) {
+            setOpponentGrid(prev => {
+              const next = prev.map(r => r.map(c => ({ ...c })));
+              gameState.opponentBoard.cells.forEach(cell => {
+                if (cell.row >= 0 && cell.col >= 0 && (cell.isHit || cell.isMiss)) {
+                  next[cell.row][cell.col] = { state: cell.isHit ? 'hit' : 'miss' };
+                }
+              });
+              return next;
+            });
+          }
+        };
+
+        const onGameStarted = (starterPlayerId) => {
+          if (!active) return;
+          const isMine = starterPlayerId === playerData.playerId;
+          setIsMyTurn(isMine);
+          setStatusMessage(isMine ? '⚔️ You go first! Click to fire.' : '⏳ Opponent goes first...');
+        };
+
+        const onShotResult = (shotResult) => {
+          if (!active) return;
+          const { x, y, result, isGameOver, turnPlayerId } = shotResult;
+          // Nếu đối thủ bắn → cập nhật myGrid
+          if (String(turnPlayerId) !== String(playerData.playerId)) {
+            setMyGrid(prev => {
+              const next = prev.map(r => r.map(c => ({ ...c })));
+              if (y >= 0 && y < next.length && x >= 0 && x < next[0].length) {
+                next[y][x] = { state: result === 'Miss' ? 'miss' : 'hit' };
+              }
+              return next;
+            });
+          }
+          if (turnPlayerId) {
+            const isMine = String(turnPlayerId) === String(playerData.playerId);
+            setIsMyTurn(isMine);
+            setTurnCount(t => t + 1);
+            setStatusMessage(isMine ? 'Your turn! Click to fire.' : "Opponent's turn...");
+          }
+          if (isGameOver) setGameOver(true);
+        };
+
+        const onGameOver = (winnerId, wName) => {
+          if (!active) return;
+          setGameOver(true);
+          setWinnerName(wName || '');
+          setWinner(String(winnerId) === String(playerData.playerId) ? 'you' : 'opponent');
+          disconnectMatchHub();
+        };
+
+        const onDisconnected = () => {
+          if (!active) return;
+          setStatusMessage('Opponent disconnected. Waiting for reconnect (30s)...');
+        };
+
+        const onReconnected = () => {
+          if (!active) return;
+          setStatusMessage(isMyTurnRef.current ? 'Your turn! Click to fire.' : "Opponent's turn...");
+        };
+
+        conn.on('ReceiveGameState', onGameState);
+        conn.on('ReceiveGameStarted', onGameStarted);
+        conn.on('ReceiveShotResult', onShotResult);
+        conn.on('ReceiveGameOver', onGameOver);
+        conn.on('ReceivePlayerDisconnected', onDisconnected);
+        conn.on('ReceivePlayerReconnected', onReconnected);
+
+        cleanup = () => {
+          active = false;
+          conn.off('ReceiveGameState', onGameState);
+          conn.off('ReceiveGameStarted', onGameStarted);
+          conn.off('ReceiveShotResult', onShotResult);
+          conn.off('ReceiveGameOver', onGameOver);
+          conn.off('ReceivePlayerDisconnected', onDisconnected);
+          conn.off('ReceivePlayerReconnected', onReconnected);
+        };
+      } catch (err) {
+        console.error('[BattleScreen] SignalR setup error:', err);
+      }
+    };
+
+    setup();
+
+    return () => {
+      active = false;
+      if (cleanup) cleanup();
+    };
+  }, [playerData, matchId]);
+
+  // ── Bắn tàu ───────────────────────────────────────────────────────
+  const handleCellClick = useCallback(async (row, col) => {
+    if (!isMyTurn || gameOver || isFiring || !playerData) return;
+    if (opponentGrid[row][col].state !== 'unknown') return;
+
+    setIsFiring(true);
+    try {
+      const result = await fireShot(matchId, playerData.playerId, col, row);
+      setOpponentGrid(prev => {
+        const next = prev.map(r => r.map(c => ({ ...c })));
+        next[row][col] = {
+          state: result.result === 'Miss' ? 'miss' : 'hit',
+          sunk: result.result === 'Sunk',
+        };
+        return next;
+      });
+      setMyShots(s => s + 1);
+      if (result.result !== 'Miss') setMyHits(h => h + 1);
+
+      const type = result.result === 'Miss' ? 'miss' : result.result === 'Sunk' ? 'sunk' : 'hit';
+      showToast({ type });
+
+      if (result.isGameOver) {
         setGameOver(true);
-        setTimeout(() => navigate(`/game-over/${roomId}?winner=player`), 2000);
+        setWinner('you');
+      } else {
+        setIsMyTurn(false);
+        setStatusMessage("Opponent's turn...");
+        setTurnCount(t => t + 1);
       }
-    } else {
-      newOpponentGrid[row][col].miss = true;
-      setLastShot({ type: 'miss' });
+    } catch (err) {
+      console.error('[BattleScreen] fireShot error:', err);
+      const msg = err?.response?.data?.message;
+      if (msg) showToast({ type: 'error', message: msg });
+    } finally {
+      setIsFiring(false);
     }
+  }, [isMyTurn, gameOver, isFiring, opponentGrid, matchId, playerData, showToast]);
 
-    setOpponentGrid(newOpponentGrid);
-    setStats(prev => ({
-      ...prev,
-      playerShots: prev.playerShots + 1,
-      playerHits: prev.playerHits + (isHit ? 1 : 0),
-      playerMisses: prev.playerMisses + (isHit ? 0 : 1),
-    }));
-
-    setIsPlayerTurn(false);
-    setTimeout(() => setLastShot(null), 2000);
+  // ── Đầu hàng ───────────────────────────────────────────────────────
+  const handleSurrender = async () => {
+    if (gameOver || !playerData || !matchId) return;
+    if (window.confirm("Are you sure you want to surrender?")) {
+      try {
+        setIsFiring(true);
+        await surrenderMatch(matchId, playerData.playerId);
+        showToast({ type: 'error', message: 'You surrendered!' });
+        setGameOver(true);
+        setWinner('opponent');
+        // Let SignalR handle the opponent's side, navigate after a short delay
+        setTimeout(() => {
+          navigate(`/game-over/${matchId}/${userId}/${serverId}?winner=B`);
+        }, 2000);
+      } catch (err) {
+        console.error('[BattleScreen] Surrender error:', err);
+        showToast({ type: 'error', message: 'Failed to surrender' });
+        setIsFiring(false);
+      }
+    }
   };
 
-  const getShipHealthBar = (ship) => {
-    const percentage = ((ship.total - ship.hits) / ship.total) * 100;
+  const accuracy = myShots > 0 ? Math.round((myHits / myShots) * 100) : 0;
+  const myName = playerData?.displayName || 'You';
+
+  const renderCell = (cell, r, c, isEnemy) => {
+    let bg = 'bg-blue-900/50';
+    if (isEnemy) {
+      if (cell.state === 'hit') bg = 'bg-red-500 cursor-not-allowed';
+      else if (cell.state === 'miss') bg = 'bg-gray-500/60 cursor-not-allowed';
+      else if (isMyTurn && !gameOver && !isFiring) bg = 'bg-blue-900/50 hover:bg-orange-500/40 cursor-crosshair';
+      else bg = 'bg-blue-900/50 cursor-not-allowed';
+    } else {
+      if (cell.state === 'hit') bg = 'bg-red-500/80';
+      else if (cell.state === 'miss') bg = 'bg-gray-500/40';
+    }
     return (
-      <div className="flex items-center gap-2">
-        <div className="flex-1 bg-gray-200 rounded-full h-2 overflow-hidden">
-          <div
-            className={`h-full transition-all ${
-              ship.sunk ? 'bg-red-500' : percentage > 50 ? 'bg-green-500' : percentage > 25 ? 'bg-yellow-500' : 'bg-orange-500'
-            }`}
-            style={{ width: `${percentage}%` }}
-          />
+      <div
+        key={`${r}-${c}`}
+        className={`w-9 h-9 border border-blue-800/40 transition-all flex items-center justify-center text-sm flex-shrink-0 ${bg}`}
+        onClick={() => isEnemy && handleCellClick(r, c)}
+      >
+        {cell.state === 'hit' && '💥'}
+        {cell.state === 'miss' && <span className="w-2 h-2 bg-gray-400 rounded-full" />}
+      </div>
+    );
+  };
+
+  const renderGrid = (grid, isEnemy) => {
+    const labels = Array(grid.length).fill(0).map((_, i) => String.fromCharCode(65 + i));
+    return (
+      <div className="overflow-auto">
+        <div className="flex ml-7 mb-1">
+          {labels.map(l => (
+            <div key={l} className="flex-shrink-0 w-9 h-5 flex items-center justify-center text-xs font-bold text-blue-300">{l}</div>
+          ))}
         </div>
-        <span className="text-xs text-gray-600 w-16">
-          {ship.total - ship.hits}/{ship.total}
-        </span>
+        {grid.map((row, r) => (
+          <div key={r} className="flex">
+            <div className="flex-shrink-0 w-7 h-9 flex items-center justify-center text-xs font-bold text-blue-300">{r + 1}</div>
+            {row.map((cell, c) => renderCell(cell, r, c, isEnemy))}
+          </div>
+        ))}
       </div>
     );
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-100 to-slate-200 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-indigo-950 p-4">
       <div className="container mx-auto max-w-7xl">
+
         {/* Header */}
-        <div className="bg-white rounded-2xl border border-gray-300 shadow-xl p-4 mb-4">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-4">
-              <div className="bg-gradient-to-br from-blue-500 to-purple-600 p-3 rounded-xl">
-                <Ship className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">Battle in Progress</h1>
-                <p className="text-sm text-gray-600">Room: {roomId}</p>
-              </div>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="bg-gradient-to-br from-orange-500 to-red-600 p-2.5 rounded-xl shadow-lg">
+              <Zap className="w-6 h-6 text-white" />
             </div>
-
-            <div className={`px-6 py-3 rounded-xl font-bold text-lg ${
-              isPlayerTurn
-                ? 'bg-green-100 text-green-700 border-2 border-green-300'
-                : 'bg-orange-100 text-orange-700 border-2 border-orange-300'
-            }`}>
-              {isPlayerTurn ? (
-                <span className="flex items-center gap-2">
-                  <Target className="w-5 h-5" />
-                  YOUR TURN
-                </span>
-              ) : (
-                <span className="flex items-center gap-2">
-                  <Zap className="w-5 h-5 animate-pulse" />
-                  OPPONENT'S TURN
-                </span>
-              )}
+            <div>
+              <h1 className="text-xl font-black text-white">Battle in Progress</h1>
+              <p className="text-blue-300 text-xs">Match #{matchId} · Turn {turnCount}</p>
             </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className={`px-5 py-2.5 rounded-xl font-black text-base flex items-center gap-2 transition-all ${isMyTurn && !gameOver ? 'bg-green-500/20 border-2 border-green-500 text-green-400'
+                : gameOver ? 'bg-purple-500/20 border-2 border-purple-500 text-purple-400'
+                  : 'bg-orange-500/20 border-2 border-orange-500 text-orange-400'
+              }`}>
+              {gameOver ? <><Trophy className="w-5 h-5" /> Game Over</>
+                : isMyTurn ? <><Target className="w-5 h-5" /> Your Turn</>
+                  : <><Clock className="w-5 h-5 animate-spin" style={{ animationDuration: '2s' }} /> Opponent's Turn</>}
+            </div>
+            {!gameOver && (
+              <button 
+                onClick={handleSurrender} 
+                disabled={isFiring} 
+                className="bg-red-500/20 hover:bg-red-500/40 border-2 border-red-500/50 text-red-400 px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 disabled:opacity-50"
+              >
+                <Flag className="w-4 h-4" />
+                <span className="hidden sm:inline">Surrender</span>
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Main Battle Area */}
+        <div className="mb-3 text-center">
+          <p className="text-blue-200 text-sm">{statusMessage}</p>
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-3 gap-4 mb-4">
+          <div className="bg-white/10 rounded-xl p-3 text-center border border-white/10">
+            <p className="text-blue-300 text-xs mb-0.5">Shots Fired</p>
+            <p className="text-white text-xl font-black">{myShots}</p>
+          </div>
+          <div className="bg-white/10 rounded-xl p-3 text-center border border-white/10">
+            <p className="text-blue-300 text-xs mb-0.5">Hits</p>
+            <p className="text-green-400 text-xl font-black">{myHits}</p>
+          </div>
+          <div className="bg-white/10 rounded-xl p-3 text-center border border-white/10">
+            <p className="text-blue-300 text-xs mb-0.5">Accuracy</p>
+            <p className="text-yellow-400 text-xl font-black">{accuracy}%</p>
+          </div>
+        </div>
+
+        {/* Grids */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {/* Your Ocean */}
-          <div className="bg-white rounded-2xl border border-gray-300 shadow-xl p-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <Ship className="w-5 h-5 text-blue-600" />
-              Your Ocean
-            </h2>
-
-            <div className="inline-block">
-              {/* Column labels */}
-              <div className="flex ml-8 mb-1">
-                {['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'].map(letter => (
-                  <div key={letter} className="w-10 h-6 flex items-center justify-center font-bold text-xs text-gray-600">
-                    {letter}
-                  </div>
-                ))}
-              </div>
-
-              {playerGrid.map((row, rowIndex) => (
-                <div key={rowIndex} className="flex">
-                  <div className="w-8 h-10 flex items-center justify-center font-bold text-xs text-gray-600">
-                    {rowIndex + 1}
-                  </div>
-                  
-                  {row.map((cell, colIndex) => (
-                    <div
-                      key={colIndex}
-                      className={`w-10 h-10 border border-gray-400 ${
-                        cell.hit
-                          ? cell.ship
-                            ? 'bg-red-500'
-                            : 'bg-gray-300'
-                          : cell.ship
-                          ? 'bg-blue-400'
-                          : 'bg-blue-100'
-                      }`}
-                    >
-                      {cell.hit && cell.ship && (
-                        <div className="w-full h-full flex items-center justify-center text-white text-xl">
-                          💥
-                        </div>
-                      )}
-                      {cell.hit && !cell.ship && (
-                        <div className="w-full h-full flex items-center justify-center text-gray-600">
-                          ❌
-                        </div>
-                      )}
-                      {!cell.hit && cell.ship && (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <Ship className="w-5 h-5 text-white" />
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ))}
-            </div>
-
-            {/* Your Ships Status */}
-            <div className="mt-6 space-y-2">
-              <h3 className="font-bold text-gray-800 text-sm mb-2">Your Fleet:</h3>
-              {Object.entries(ships.player).map(([key, ship]) => (
-                <div key={key} className="flex items-center gap-3">
-                  <span className={`text-sm font-semibold w-24 ${ship.sunk ? 'text-red-600 line-through' : 'text-gray-700'}`}>
-                    {key.charAt(0).toUpperCase() + key.slice(1)}:
-                  </span>
-                  {getShipHealthBar(ship)}
-                  {ship.sunk && <span className="text-xs text-red-600 font-bold">⚓ SUNK</span>}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Enemy Waters */}
-          <div className="bg-white rounded-2xl border border-gray-300 shadow-xl p-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <Target className="w-5 h-5 text-red-600" />
+          <div className="bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20 p-5">
+            <h2 className="text-white font-bold mb-4 flex items-center gap-2 text-base">
+              <Target className="w-5 h-5 text-red-400" />
               Enemy Waters
+              {isMyTurn && !gameOver && <span className="ml-auto text-xs text-orange-300 animate-pulse font-normal">← Click to fire</span>}
             </h2>
-
-            <div className="inline-block">
-              {/* Column labels */}
-              <div className="flex ml-8 mb-1">
-                {['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'].map(letter => (
-                  <div key={letter} className="w-10 h-6 flex items-center justify-center font-bold text-xs text-gray-600">
-                    {letter}
-                  </div>
-                ))}
-              </div>
-
-              {opponentGrid.map((row, rowIndex) => (
-                <div key={rowIndex} className="flex">
-                  <div className="w-8 h-10 flex items-center justify-center font-bold text-xs text-gray-600">
-                    {rowIndex + 1}
-                  </div>
-                  
-                  {row.map((cell, colIndex) => (
-                    <div
-                      key={colIndex}
-                      onClick={() => handleCellClick(rowIndex, colIndex)}
-                      className={`w-10 h-10 border border-gray-400 transition-all ${
-                        cell.hit
-                          ? 'bg-red-500 cursor-not-allowed'
-                          : cell.miss
-                          ? 'bg-gray-300 cursor-not-allowed'
-                          : isPlayerTurn
-                          ? 'bg-blue-200 hover:bg-yellow-200 cursor-crosshair'
-                          : 'bg-blue-200 cursor-not-allowed'
-                      }`}
-                    >
-                      {cell.hit && (
-                        <div className="w-full h-full flex items-center justify-center text-white text-xl">
-                          💥
-                        </div>
-                      )}
-                      {cell.miss && (
-                        <div className="w-full h-full flex items-center justify-center text-gray-600">
-                          ❌
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ))}
-            </div>
-
-            {/* Enemy Ships Status */}
-            <div className="mt-6 space-y-2">
-              <h3 className="font-bold text-gray-800 text-sm mb-2">Enemy Fleet:</h3>
-              {Object.entries(ships.opponent).map(([key, ship]) => (
-                <div key={key} className="flex items-center gap-3">
-                  <span className={`text-sm font-semibold w-24 ${ship.sunk ? 'text-red-600 line-through' : 'text-gray-700'}`}>
-                    {key.charAt(0).toUpperCase() + key.slice(1)}:
-                  </span>
-                  {getShipHealthBar(ship)}
-                  {ship.sunk && <span className="text-xs text-red-600 font-bold">⚓ SUNK</span>}
-                </div>
-              ))}
-            </div>
+            {renderGrid(opponentGrid, true)}
+          </div>
+          <div className="bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20 p-5">
+            <h2 className="text-white font-bold mb-4 flex items-center gap-2 text-base">
+              <Shield className="w-5 h-5 text-blue-400" />
+              Your Ocean — {myName}
+            </h2>
+            {renderGrid(myGrid, false)}
           </div>
         </div>
 
-        {/* Stats Bar */}
-        <div className="mt-4 bg-white rounded-xl border border-gray-300 shadow-lg p-4">
-          <div className="grid grid-cols-3 gap-4 text-center">
-            <div>
-              <p className="text-sm text-gray-600 mb-1">Total Shots</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.playerShots}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-600 mb-1">Hits</p>
-              <p className="text-2xl font-bold text-green-600">{stats.playerHits}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-600 mb-1">Accuracy</p>
-              <p className="text-2xl font-bold text-blue-600">
-                {stats.playerShots > 0 ? Math.round((stats.playerHits / stats.playerShots) * 100) : 0}%
-              </p>
-            </div>
+        {/* Game Over */}
+        {gameOver && (
+          <div className={`mt-6 rounded-2xl p-8 text-center border-2 ${winner === 'you' ? 'bg-yellow-500/20 border-yellow-400' : 'bg-red-500/20 border-red-400'}`}>
+            <p className={`text-4xl font-black mb-3 ${winner === 'you' ? 'text-yellow-400' : 'text-red-400'}`}>
+              {winner === 'you' ? '🏆 Victory!' : '💀 Defeated!'}
+            </p>
+            {winnerName && <p className="text-white/70 text-lg mb-3">{winner === 'you' ? 'Well done!' : `${winnerName} wins!`}</p>}
+            <button
+              onClick={() => navigate(`/game-over/${matchId}/${userId}/${serverId}?winner=${winner === 'you' ? 'A' : 'B'}`)}
+              className="mt-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-black px-10 py-3 rounded-xl hover:opacity-90 transition-all"
+            >
+              View Results
+            </button>
           </div>
-        </div>
+        )}
       </div>
 
-      {/* Shot Result Toast */}
-      {lastShot && (
-        <div className={`fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 px-8 py-6 rounded-2xl shadow-2xl animate-bounce text-center ${
-          lastShot.type === 'hit' || lastShot.type === 'sunk'
-            ? 'bg-red-500'
-            : 'bg-gray-500'
-        }`}>
-          <p className="text-white font-bold text-4xl mb-2">
-            {lastShot.type === 'hit' && '💥 HIT!'}
-            {lastShot.type === 'miss' && '❌ MISS!'}
-            {lastShot.type === 'sunk' && '⚓ SHIP SUNK!'}
+      {/* Toast */}
+      {lastShotResult && (
+        <div className={`fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 px-10 py-7 rounded-3xl shadow-2xl text-center pointer-events-none z-50 ${lastShotResult.type === 'miss' ? 'bg-gray-700' : lastShotResult.type === 'error' ? 'bg-orange-700' : 'bg-red-600'
+          }`}>
+          <p className="text-white font-black text-5xl mb-1">
+            {lastShotResult.type === 'hit' && '💥 HIT!'}
+            {lastShotResult.type === 'miss' && '❌ MISS!'}
+            {lastShotResult.type === 'sunk' && '⚓ SUNK!'}
+            {lastShotResult.type === 'error' && '⚠️'}
           </p>
-          {lastShot.type === 'sunk' && (
-            <p className="text-white text-xl">
-              {lastShot.ship.toUpperCase()} destroyed!
-            </p>
-          )}
+          {lastShotResult.message && <p className="text-white/80 text-base">{lastShotResult.message}</p>}
         </div>
       )}
     </div>

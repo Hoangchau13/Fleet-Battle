@@ -1,6 +1,6 @@
 
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import {
   Ship,
   Trophy,
@@ -13,86 +13,76 @@ import {
   LogOut,
   Wifi,
   WifiOff,
-  Server
+  Server,
+  Search,
+  X,
+  Swords,
 } from 'lucide-react';
-import { logout, getPlayerProfile, linkVrDevice } from '../../../api';
+import { logout, getPlayerProfileByUserAndServer, linkVrDevice } from '../../../api';
+import { useMatchmakingHub } from '../../../hooks/useMatchmakingHub';
+import { ensureConnectedAndRegistered } from '../../../hooks/matchHubConnection';
 
 export default function HomePage() {
+  const { userId, serverId } = useParams();
   const navigate = useNavigate();
   const [pinCode, setPinCode] = useState(['', '', '', '', '', '']);
   const [vrConnected, setVrConnected] = useState(false);
-  const [currentUser, setCurrentUser] = useState(null);
   const [playerData, setPlayerData] = useState(null);
   const [isLinkingVr, setIsLinkingVr] = useState(false);
   const [vrLinkError, setVrLinkError] = useState('');
 
   useEffect(() => {
-    // Get user info from localStorage
-    const userStr = localStorage.getItem('user');
-    if (userStr) {
-      try {
-        const user = JSON.parse(userStr);
-        setCurrentUser(user);
-      } catch (error) {
-        console.error('Error parsing user data:', error);
-      }
-    }
-
-    // Get player data for current server
-    const playerStr = localStorage.getItem('currentPlayer');
-    if (playerStr) {
-      try {
-        const player = JSON.parse(playerStr);
-        setPlayerData({
-          ...player,
-          username: player?.displayName,
-          eloScore: player?.eloScore
-        });
-
-        // Try to fetch real stats from API
-        const fetchRealProfile = async () => {
-          try {
-            const playerIdToFetch = player?.playerId || player?.id || currentUser?.userId;
-            if (playerIdToFetch) {
-              const realProfile = await getPlayerProfile(playerIdToFetch);
-              if (realProfile) {
-                setPlayerData(prev => ({
-                  ...prev,
-                  ...realProfile,
-                  username: realProfile.displayName,
-                  eloScore: realProfile.elo,
-                  totalMatches: realProfile.totalMatches,
-                  wins: realProfile.totalWins,
-                  losses: realProfile.totalLosses,
-                  winRate: realProfile.winRate,
-                  currentStreak: realProfile.currentStreak,
-                  recentMatches: realProfile.recentMatches
-                }));
-              }
-            }
-          } catch (error) {
-            console.error('Failed to fetch real player profile:', error);
-          }
-        };
-
-        fetchRealProfile();
-
-      } catch (error) {
-        console.error('Error parsing player data:', error);
-      }
-    } else {
-      // No player data, redirect to server selection
+    if (!userId || !serverId) {
       navigate('/server-selection');
+      return;
     }
-  }, [navigate]);
 
-  // Use recent matches from playerData if available
-  const displayMatches = playerData?.recentMatches?.length > 0 ? playerData.recentMatches : [
-    { id: 1, opponent: 'Commander_Jack', result: 'Win', score: '10-7', time: '2 hours ago' },
-    { id: 2, opponent: 'Captain_Sarah', result: 'Win', score: '10-8', time: '5 hours ago' },
-    { id: 3, opponent: 'Admiral_Mike', result: 'Loss', score: '8-10', time: '1 day ago' },
-  ];
+    // Fetch real stats from API using URL params
+    const fetchRealProfile = async () => {
+      try {
+        const realProfile = await getPlayerProfileByUserAndServer(userId, serverId);
+        if (realProfile) {
+          setPlayerData({
+            ...realProfile,
+            totalMatches: realProfile.totalMatches || (realProfile.totalWins + realProfile.totalLosses),
+            displayName: realProfile.displayName,
+            elo: realProfile.elo,
+            wins: realProfile.totalWins,
+            losses: realProfile.totalLosses,
+          });
+          
+          // localStorage.setItem('currentPlayer', ...) removed as per requirement
+        } else {
+          // If no player found on this server, maybe redirect to creation? 
+          // But usually ServerSelection handles that. 
+          console.warn('No player profile found for this user/server');
+        }
+      } catch (error) {
+        console.error('Failed to fetch real player profile:', error);
+        // If 404, maybe the player doesn't exist?
+        if (error.response?.status === 404) {
+          navigate('/server-selection');
+        }
+      }
+    };
 
+    fetchRealProfile();
+  }, [userId, serverId, navigate]);
+
+  // Resolve playerId from playerData (fetched from API)
+  const playerId = playerData?.playerId || playerData?.id || null;
+
+  // Matchmaking hook
+  const {
+    matchStatus,
+    statusMessage,
+    isSearching,
+    error: matchError,
+    startSearching,
+    stopSearching,
+  } = useMatchmakingHub(playerId, userId, serverId);
+
+  // ── PIN Handlers ──────────────────────────────────────────────────
   const handlePinInput = (index, value) => {
     if (value.length <= 1 && /^[a-zA-Z0-9]*$/.test(value)) {
       const newPin = [...pinCode];
@@ -108,30 +98,72 @@ export default function HomePage() {
   };
 
   const handleKeyDown = (index, e) => {
-    // Handle backspace
     if (e.key === 'Backspace' && !pinCode[index] && index > 0) {
       const prevInput = document.getElementById(`pin-${index - 1}`);
       if (prevInput) prevInput.focus();
     }
   };
 
+  // Allow paste of up to 6 alphanumeric characters into PIN fields
+  const handlePaste = (e) => {
+    e.preventDefault();
+    const text = e.clipboardData.getData('text');
+    const chars = text.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 6);
+    if (!chars) return;
+
+    const newPin = ['', '', '', '', '', ''];
+    chars.split('').forEach((ch, i) => {
+      newPin[i] = ch;
+    });
+    setPinCode(newPin);
+
+    // Focus last filled input
+    const lastIdx = Math.min(chars.length - 1, 5);
+    const lastInput = document.getElementById(`pin-${lastIdx}`);
+    if (lastInput) lastInput.focus();
+  };
+
+  // ── VR Connection ─────────────────────────────────────────────────
   const handleConnect = async () => {
     const pin = pinCode.join('');
     if (pin.length === 6) {
       setIsLinkingVr(true);
       setVrLinkError('');
       try {
-        const playerIdValue = playerData?.playerId || playerData?.id || currentUser?.userId;
-        const response = await linkVrDevice(pin, playerIdValue);
-        console.log('Successfully linked VR device:', response);
-        setVrConnected(true);
-        // Navigate to Game Modes after VR connection
-        navigate('/game-modes');
+        const playerIdValue = playerData?.playerId || playerData?.id;
+        
+        let linkTimeout;
+        const conn = await ensureConnectedAndRegistered(playerIdValue);
+        
+        const onVrLinkConfirmed = () => {
+          console.log('[HomePage] ReceiveVrLinkConfirmed event received!');
+          setVrConnected(true);
+          setIsLinkingVr(false);
+          clearTimeout(linkTimeout);
+          conn.off('ReceiveVrLinkConfirmed', onVrLinkConfirmed);
+        };
+        
+        conn.on('ReceiveVrLinkConfirmed', onVrLinkConfirmed);
+        
+        linkTimeout = setTimeout(() => {
+          conn.off('ReceiveVrLinkConfirmed', onVrLinkConfirmed);
+          setIsLinkingVr(prev => {
+            if (prev) {
+              setVrLinkError('Timeout waiting for VR confirmation from device. Please try again.');
+              return false;
+            }
+            return prev;
+          });
+        }, 30000); // 30 seconds timeout
+        
+        await linkVrDevice(pin, playerIdValue);
+        console.log('Successfully requested VR link, waiting for VR device confirmation...');
       } catch (error) {
-        console.error('Failed to link VR device:', error);
-        setVrLinkError(error?.response?.data?.message || 'Invalid PIN code. Please try again.');
-      } finally {
+        console.error('Failed to request VR link:', error);
         setIsLinkingVr(false);
+        setVrLinkError(
+          error?.response?.data?.message || 'Invalid PIN code. Please try again.'
+        );
       }
     }
   };
@@ -149,7 +181,7 @@ export default function HomePage() {
     navigate('/server-selection');
   };
 
-  // Show loading if player data is not loaded yet
+  // ── Loading guard ─────────────────────────────────────────────────
   if (!playerData) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center">
@@ -160,6 +192,19 @@ export default function HomePage() {
       </div>
     );
   }
+
+  const pinFull = pinCode.join('').length === 6;
+
+  // Label / color for match status
+  const matchStatusConfig = {
+    idle: null,
+    connecting: { text: 'Connecting...', color: 'text-blue-600' },
+    searching: { text: statusMessage || 'Searching for opponent...', color: 'text-orange-600' },
+    found: { text: 'Match found! Redirecting...', color: 'text-green-600' },
+    error: { text: matchError || 'Error occurred.', color: 'text-red-600' },
+  };
+
+  const statusInfo = matchStatusConfig[matchStatus];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
@@ -181,8 +226,9 @@ export default function HomePage() {
             {/* User Info */}
             <div className="flex items-center gap-4">
               <div className="text-right">
-                <p className="text-sm font-semibold text-gray-900">{playerData?.username}</p>
-                <p className="text-xs text-gray-600">• ELO: {playerData?.eloScore}</p>
+                <p className="text-sm font-semibold text-gray-900">{playerData?.displayName}</p>
+                <p className="text-xs text-gray-600">• ELO: {playerData?.elo}</p>
+                {/* <p className="text-xs text-gray-600">• Server: {playerData?.groupName}</p> */}
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -194,7 +240,7 @@ export default function HomePage() {
                   <span className="hidden sm:inline">Change Server</span>
                 </button>
                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold shadow-md">
-                  {playerData?.username?.charAt(0)?.toUpperCase()}
+                  {playerData?.displayName?.charAt(0)?.toUpperCase()}
                 </div>
                 <button
                   onClick={handleLogout}
@@ -212,7 +258,7 @@ export default function HomePage() {
       <div className="container mx-auto px-6 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-          {/* Left Column - VR Connection & Quick Match */}
+          {/* Left Column – VR Connection & Find Match */}
           <div className="lg:col-span-1 space-y-6">
 
             {/* VR Connection Card */}
@@ -224,6 +270,7 @@ export default function HomePage() {
                   <WifiOff className="w-6 h-6 text-gray-400" />
                 )}
                 <h2 className="text-lg font-bold text-gray-900">VR Headset</h2>
+                <span className="ml-auto text-xs text-gray-400 italic">Optional</span>
               </div>
 
               {!vrConnected ? (
@@ -243,19 +290,20 @@ export default function HomePage() {
                         value={digit}
                         onChange={(e) => handlePinInput(index, e.target.value)}
                         onKeyDown={(e) => handleKeyDown(index, e)}
+                        onPaste={index === 0 ? handlePaste : undefined}
                         disabled={isLinkingVr}
                         className="w-10 sm:w-12 h-14 text-center text-2xl font-bold bg-gray-50 border-2 border-gray-300 rounded-lg text-gray-900 focus:border-blue-500 focus:bg-white focus:outline-none transition-all disabled:opacity-50"
                       />
                     ))}
                   </div>
-                  
+
                   {vrLinkError && (
                     <p className="text-red-500 text-xs text-center mb-4">{vrLinkError}</p>
                   )}
 
                   <button
                     onClick={handleConnect}
-                    disabled={pinCode.join('').length !== 6 || isLinkingVr}
+                    disabled={!pinFull || isLinkingVr}
                     className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white font-semibold py-3 rounded-xl hover:from-blue-500 hover:to-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md flex justify-center items-center gap-2"
                   >
                     {isLinkingVr ? (
@@ -287,22 +335,70 @@ export default function HomePage() {
                 </>
               )}
             </div>
+
+            {/* Find Match Card */}
+            <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-lg">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="bg-gradient-to-br from-orange-500 to-red-500 p-2 rounded-xl shadow-md">
+                  <Swords className="w-5 h-5 text-white" />
+                </div>
+                <h2 className="text-lg font-bold text-gray-900">Find Match</h2>
+              </div>
+
+              <p className="text-sm text-gray-600 mb-5">
+                {vrConnected
+                  ? 'VR connected! Click to enter ranked matchmaking.'
+                  : 'Play on Web — no VR required. Click to find an opponent.'}
+              </p>
+
+              {/* Status indicator */}
+              {statusInfo && (
+                <div
+                  className={`flex items-center gap-2 mb-4 text-sm font-medium ${statusInfo.color}`}
+                >
+                  {isSearching && (
+                    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin flex-shrink-0" />
+                  )}
+                  <span>{statusInfo.text}</span>
+                </div>
+              )}
+
+              {/* Find Match / Cancel button */}
+              {!isSearching ? (
+                <button
+                  onClick={startSearching}
+                  disabled={matchStatus === 'found'}
+                  className="w-full bg-gradient-to-r from-orange-500 to-red-500 text-white font-bold py-3.5 rounded-xl hover:from-orange-400 hover:to-red-400 disabled:opacity-60 disabled:cursor-not-allowed transition-all shadow-md flex justify-center items-center gap-2 text-base"
+                >
+                  <Search className="w-5 h-5" />
+                  Find Match
+                </button>
+              ) : (
+                <button
+                  onClick={stopSearching}
+                  className="w-full bg-gray-100 text-gray-700 font-semibold py-3.5 rounded-xl hover:bg-gray-200 transition-all border border-gray-300 flex justify-center items-center gap-2"
+                >
+                  <X className="w-4 h-4" />
+                  Cancel Search
+                </button>
+              )}
+            </div>
           </div>
 
-          {/* Right Column - Stats and Profile */}
+          {/* Right Column – Stats and Profile */}
           <div className="lg:col-span-2 space-y-6">
 
             {/* Stats Cards Grid */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="bg-gradient-to-br from-blue-100 to-blue-200 rounded-xl border border-blue-300 p-4 shadow-md">
                 <Trophy className="w-8 h-8 text-blue-600 mb-2" />
-                <p className="text-2xl font-bold text-gray-900">{playerData?.wins}</p>
+                <p className="text-2xl font-bold text-gray-900">{playerData?.totalWins}</p>
                 <p className="text-xs text-blue-700">Total Wins</p>
               </div>
 
               <div className="bg-gradient-to-br from-purple-100 to-purple-200 rounded-xl border border-purple-300 p-4 shadow-md">
                 <Target className="w-8 h-8 text-purple-600 mb-2" />
-                <p className="text-2xl font-bold text-gray-900">{playerData?.eloScore}</p>
+                <p className="text-2xl font-bold text-gray-900">{playerData?.elo}</p>
                 <p className="text-xs text-purple-700">ELO Score</p>
               </div>
 
@@ -314,8 +410,8 @@ export default function HomePage() {
 
               <div className="bg-gradient-to-br from-orange-100 to-orange-200 rounded-xl border border-orange-300 p-4 shadow-md">
                 <Zap className="w-8 h-8 text-orange-600 mb-2" />
-                <p className="text-2xl font-bold text-gray-900">{playerData?.losses}</p>
-                <p className="text-xs text-orange-700"> Total Losses</p>
+                <p className="text-2xl font-bold text-gray-900">{playerData?.totalLosses}</p>
+                <p className="text-xs text-orange-700">Total Losses</p>
               </div>
             </div>
 
@@ -330,13 +426,23 @@ export default function HomePage() {
                 </div>
                 <div>
                   <p className="text-gray-600 text-sm mb-1">Current Streak</p>
-                  <p className={`text-2xl font-bold flex items-center gap-1 ${(playerData?.currentStreak || 0) >= 0 ? 'text-red-500' : 'text-blue-500'}`}>
+                  <p
+                    className={`text-2xl font-bold flex items-center gap-1 ${(playerData?.currentStreak || 0) >= 0 ? 'text-red-500' : 'text-blue-500'
+                      }`}
+                  >
                     <span>{Math.abs(playerData?.currentStreak || 0)}</span>
-                    <span className={(playerData?.currentStreak || 0) < 0 ? 'hue-rotate-[190deg] brightness-125 saturate-150' : ''}>🔥</span>
+                    <span
+                      className={
+                        (playerData?.currentStreak || 0) < 0
+                          ? 'hue-rotate-[190deg] brightness-125 saturate-150'
+                          : ''
+                      }
+                    >
+                      🔥
+                    </span>
                   </p>
                 </div>
               </div>
-
             </div>
 
             {/* Recent Matches */}
@@ -359,23 +465,34 @@ export default function HomePage() {
                         <div className="flex items-center gap-3">
                           <Users className="w-5 h-5 text-gray-500" />
                           <div>
-                            <p className="text-gray-900 font-semibold">vs {match.opponentName || 'Unknown'}</p>
+                            <p className="text-gray-900 font-semibold">
+                              vs {match.opponentName || 'Unknown'}
+                            </p>
                             <div className="flex items-center gap-2 mt-1">
                               <Clock className="w-3 h-3 text-gray-400" />
                               <p className="text-xs text-gray-600">
-                                {match.timestamp ? new Date(match.timestamp).toLocaleString() : 'Recently'}
+                                {match.timestamp
+                                  ? new Date(match.timestamp).toLocaleString()
+                                  : 'Recently'}
                               </p>
                             </div>
                           </div>
                         </div>
                         <div className="text-right">
-                          <span className={`font-bold ${match.result === 'Win' ? 'text-green-600' : 'text-red-600'}`}>
+                          <span
+                            className={`font-bold ${match.result === 'Win' ? 'text-green-600' : 'text-red-600'
+                              }`}
+                          >
                             {match.result}
                           </span>
                           <div className="flex flex-col items-end gap-1 mt-1">
                             {match.eloChange !== undefined && (
-                              <p className={`text-xs font-semibold ${match.eloChange >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                                {match.eloChange >= 0 ? '+' : ''}{match.eloChange} ELO
+                              <p
+                                className={`text-xs font-semibold ${match.eloChange >= 0 ? 'text-green-500' : 'text-red-500'
+                                  }`}
+                              >
+                                {match.eloChange >= 0 ? '+' : ''}
+                                {match.eloChange} ELO
                               </p>
                             )}
                             {match.duration && (
@@ -398,4 +515,4 @@ export default function HomePage() {
       </div>
     </div>
   );
-} 
+}

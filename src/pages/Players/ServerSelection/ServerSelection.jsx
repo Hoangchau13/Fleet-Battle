@@ -44,30 +44,12 @@ function ServerSelection() {
   }, []);
 
   const handleServerSelect = (server) => {
+    localStorage.setItem('currentServer', JSON.stringify(server));
     if (server.hasJoined) {
       // Player exists in this server, load HomePage
-      localStorage.setItem('currentServer', JSON.stringify(server));
-      
-      const playerDataKey = `player_server_${server.id}`;
-      const playerData = localStorage.getItem(playerDataKey);
-      if (playerData) {
-        localStorage.setItem('currentPlayer', playerData);
-      } else {
-        // Fallback dummy player data if localStorage doesn't have it locally
-        const dummyPlayer = {
-          username: currentUser?.username || 'Player',
-          rank: 'Rookie',
-          eloScore: 1000,
-          serverId: server.id,
-          playerId: server.playerId || null
-        };
-        localStorage.setItem('currentPlayer', JSON.stringify(dummyPlayer));
-      }
-      
-      navigate('/home');
+      navigate(`/home/${currentUser.userId}/${server.id}`);
     } else {
       // No player in this server, go to CreatePlayer
-      localStorage.setItem('currentServer', JSON.stringify(server));
       navigate(`/create-player?serverId=${server.id}`);
     }
   };

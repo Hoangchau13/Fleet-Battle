@@ -77,3 +77,13 @@ export const getPlayerMatchHistory = async (playerId, limit = 10) => {
     throw error;
   }
 };
+// Lấy profile của Player dựa trên UserId và ServerId (GroupId)
+export const getPlayerProfileByUserAndServer = async (userId, serverId) => {
+  try {
+    const response = await apiClient.get(`/player/user/${userId}/server/${serverId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching player profile by user and server:', error);
+    throw error;
+  }
+};

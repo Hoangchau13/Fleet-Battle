@@ -1,7 +1,8 @@
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
 import { Trophy, RotateCcw, Home } from 'lucide-react';
 
 export default function GameOver() {
+  const { matchId, userId, serverId } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   
@@ -13,11 +14,11 @@ export default function GameOver() {
   const loserName = winner === 'A' ? playerBName : playerAName;
 
   const handlePlayAgain = () => {
-    navigate('/game-modes');
+    navigate(`/home/${userId}/${serverId}`);
   };
 
   const handleBackToHome = () => {
-    navigate('/');
+    navigate('/server-selection');
   };
 
   return (

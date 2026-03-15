@@ -52,3 +52,9 @@ export const surrenderMatch = async (matchId, playerId) => {
   const response = await apiClient.post(`/match/${matchId}/surrender?playerId=${playerId}`);
   return response.data;
 };
+
+// Báo cáo AFK: POST /api/match/{matchId}/claim-timeout?playerId=...
+export const claimTimeout = async (matchId, playerId) => {
+  const response = await apiClient.post(`/match/${matchId}/claim-timeout?playerId=${playerId}`);
+  return response.data;
+};

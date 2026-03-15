@@ -50,9 +50,8 @@ export async function ensureConnectedAndRegistered(playerId) {
     _registeredId = null; // Cần đăng ký lại nếu mất kết nối
   }
 
-  // Nếu chưa đăng ký hoặc đăng ký cho user khác
   if (_registeredId !== playerId) {
-    await conn.invoke('RegisterPlayer', playerId);
+    await conn.invoke('RegisterPlayer', playerId, false);
     _registeredId = playerId;
     console.log('[MatchHub] RegisterPlayer invoked for:', playerId);
   }

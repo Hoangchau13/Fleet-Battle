@@ -26,7 +26,7 @@ export default function HomePage() {
   const { userId, serverId } = useParams();
   const navigate = useNavigate();
   const [pinCode, setPinCode] = useState(['', '', '', '', '', '']);
-  const [vrConnected, setVrConnected] = useState(false);
+  const [vrConnected, setVrConnected] = useState(() => localStorage.getItem('myHasVr') === 'true');
   const [playerData, setPlayerData] = useState(null);
   const [isLinkingVr, setIsLinkingVr] = useState(false);
   const [vrLinkError, setVrLinkError] = useState('');
@@ -138,6 +138,7 @@ export default function HomePage() {
         const onVrLinkConfirmed = () => {
           console.log('[HomePage] ReceiveVrLinkConfirmed event received!');
           setVrConnected(true);
+          localStorage.setItem('myHasVr', 'true');
           setIsLinkingVr(false);
           clearTimeout(linkTimeout);
           conn.off('ReceiveVrLinkConfirmed', onVrLinkConfirmed);
@@ -170,6 +171,7 @@ export default function HomePage() {
 
   const handleDisconnect = () => {
     setVrConnected(false);
+    localStorage.setItem('myHasVr', 'false');
     setPinCode(['', '', '', '', '', '']);
   };
 

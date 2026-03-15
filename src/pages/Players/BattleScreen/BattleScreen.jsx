@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import { Target, Zap, Shield, Trophy, Clock, Flag } from 'lucide-react';
+import { Target, Zap, Shield, Trophy, Clock, Flag, AlertTriangle } from 'lucide-react';
 import { getPlayerProfileByUserAndServer } from '../../../api';
-import { fireShot, getMatchState, surrenderMatch } from '../../../api/matchApi';
+import { fireShot, getMatchState, surrenderMatch, claimTimeout } from '../../../api/matchApi';
 import { ensureConnectedAndRegistered, disconnectMatchHub } from '../../../hooks/matchHubConnection';
 
 const GRID_SIZE = 10;
@@ -28,10 +28,13 @@ export default function BattleScreen() {
   const [winnerName, setWinnerName] = useState('');
   const [lastShotResult, setLastShotResult] = useState(null);
   const [turnCount, setTurnCount] = useState(1);
+  const [timeLeft, setTimeLeft] = useState(30);
   const [isFiring, setIsFiring] = useState(false);
   const [myShots, setMyShots] = useState(0);
   const [myHits, setMyHits] = useState(0);
   const [statusMessage, setStatusMessage] = useState('Waiting for game to start...');
+  const [myHasVr, setMyHasVr] = useState(() => localStorage.getItem('myHasVr') === 'true');
+  const [opponentHasVr, setOpponentHasVr] = useState(false);
   const toastTimer = useRef(null);
   // keep isMyTurn in a ref for use inside event handlers without re-registering
   const isMyTurnRef = useRef(isMyTurn);
@@ -67,8 +70,18 @@ export default function BattleScreen() {
        const isMine = String(starterPlayerIdFromState) === String(playerData.playerId);
        setIsMyTurn(isMine);
        setStatusMessage(isMine ? '⚔️ You go first! Click to fire.' : '⏳ Opponent goes first...');
+       setTimeLeft(30);
     }
   }, [playerData, starterPlayerIdFromState, gameOver]);
+
+  // ── Timer Logic ───────────────────────────────────────────────────
+  useEffect(() => {
+    if (gameOver) return;
+    const timerId = setInterval(() => {
+      setTimeLeft(t => (t > 0 ? t - 1 : 0));
+    }, 1000);
+    return () => clearInterval(timerId);
+  }, [gameOver]);
 
   // ── Fallback Sync Mechanism ────────────────────────────────────────
   useEffect(() => {
@@ -78,31 +91,40 @@ export default function BattleScreen() {
     const fallbackTimer = setTimeout(async () => {
       try {
         const state = await getMatchState(matchId, playerData.playerId);
-        if (state && (state.status === 'Playing' || state.turnPlayerId)) {
+        if (state && state.status === 'Playing') {
           console.log('[BattleScreen] Fallback sync triggered, state:', state);
-          if (state.turnPlayerId) {
-            const isMine = String(state.turnPlayerId) === String(playerData.playerId);
+          const turnId = state.currentTurnPlayerId || state.turnPlayerId;
+          if (turnId) {
+            const isMine = String(turnId) === String(playerData.playerId);
             setIsMyTurn(isMine);
             setStatusMessage(isMine ? 'Your turn! Click to fire.' : "Opponent's turn...");
           }
           
-          if (state.myBoard?.cells) {
+          if (state.myBoard?.grid) {
             setMyGrid(prev => {
               const next = prev.map(r => r.map(c => ({ ...c })));
-              state.myBoard.cells.forEach(cell => {
-                if (cell.row >= 0 && cell.col >= 0) {
-                  next[cell.row][cell.col] = { state: cell.isHit ? 'hit' : (cell.isMiss ? 'miss' : 'unknown') };
+              state.myBoard.grid.forEach(cell => {
+                const { x, y, status } = cell;
+                if (x >= 0 && y >= 0) {
+                  const stateMap = {
+                    'Hit': 'hit',
+                    'Miss': 'miss', 
+                  };
+                  if (status === 'Hit' || status === 'Sunk') next[y][x] = { state: 'hit' };
+                  else if (status === 'Miss') next[y][x] = { state: 'miss' };
                 }
               });
               return next;
             });
           }
-          if (state.opponentBoard?.cells) {
+          if (state.opponentBoard?.grid) {
             setOpponentGrid(prev => {
               const next = prev.map(r => r.map(c => ({ ...c })));
-              state.opponentBoard.cells.forEach(cell => {
-                if (cell.row >= 0 && cell.col >= 0 && (cell.isHit || cell.isMiss)) {
-                  next[cell.row][cell.col] = { state: cell.isHit ? 'hit' : 'miss' };
+              state.opponentBoard.grid.forEach(cell => {
+                const { x, y, status } = cell;
+                if (x >= 0 && y >= 0) {
+                  if (status === 'Hit' || status === 'Sunk') next[y][x] = { state: 'hit' };
+                  else if (status === 'Miss') next[y][x] = { state: 'miss' };
                 }
               });
               return next;
@@ -129,28 +151,37 @@ export default function BattleScreen() {
 
         const onGameState = (gameState) => {
           if (!active) return;
-          if (gameState?.turnPlayerId) {
-            const isMine = gameState.turnPlayerId === playerData.playerId;
+          if (gameState?.isOpponentUsingVr !== undefined) {
+            setOpponentHasVr(gameState.isOpponentUsingVr);
+          }
+          const turnId = gameState?.currentTurnPlayerId || gameState?.turnPlayerId;
+          if (turnId) {
+            const isMine = String(turnId) === String(playerData.playerId);
             setIsMyTurn(isMine);
             setStatusMessage(isMine ? 'Your turn! Click to fire.' : "Opponent's turn...");
+            setTimeLeft(30);
           }
-          if (gameState?.myBoard?.cells) {
+          if (gameState?.myBoard?.grid) {
             setMyGrid(prev => {
               const next = prev.map(r => r.map(c => ({ ...c })));
-              gameState.myBoard.cells.forEach(cell => {
-                if (cell.row >= 0 && cell.col >= 0) {
-                  next[cell.row][cell.col] = { state: cell.isHit ? 'hit' : (cell.isMiss ? 'miss' : 'unknown') };
+              gameState.myBoard.grid.forEach(cell => {
+                const { x, y, status } = cell;
+                if (x >= 0 && y >= 0) {
+                  if (status === 'Hit' || status === 'Sunk') next[y][x] = { state: 'hit' };
+                  else if (status === 'Miss') next[y][x] = { state: 'miss' };
                 }
               });
               return next;
             });
           }
-          if (gameState?.opponentBoard?.cells) {
+          if (gameState?.opponentBoard?.grid) {
             setOpponentGrid(prev => {
               const next = prev.map(r => r.map(c => ({ ...c })));
-              gameState.opponentBoard.cells.forEach(cell => {
-                if (cell.row >= 0 && cell.col >= 0 && (cell.isHit || cell.isMiss)) {
-                  next[cell.row][cell.col] = { state: cell.isHit ? 'hit' : 'miss' };
+              gameState.opponentBoard.grid.forEach(cell => {
+                const { x, y, status } = cell;
+                if (x >= 0 && y >= 0) {
+                  if (status === 'Hit' || status === 'Sunk') next[y][x] = { state: 'hit' };
+                  else if (status === 'Miss') next[y][x] = { state: 'miss' };
                 }
               });
               return next;
@@ -163,13 +194,22 @@ export default function BattleScreen() {
           const isMine = starterPlayerId === playerData.playerId;
           setIsMyTurn(isMine);
           setStatusMessage(isMine ? '⚔️ You go first! Click to fire.' : '⏳ Opponent goes first...');
+          setTimeLeft(30);
         };
 
         const onShotResult = (shotResult) => {
           if (!active) return;
-          const { x, y, result, isGameOver, turnPlayerId } = shotResult;
-          // Nếu đối thủ bắn → cập nhật myGrid
-          if (String(turnPlayerId) !== String(playerData.playerId)) {
+          setTimeLeft(30);
+          console.log('[BattleScreen] ReceiveShotResult:', shotResult);
+          
+          const { x, y, result, isGameOver, sunkShipTypeId } = shotResult;
+          
+          // Chúng ta không có turnPlayerId trong ReceiveShotResult. 
+          // Việc cập nhật grid phụ thuộc vào việc ai vừa firing.
+          // Tốt nhất chỉ cập nhật hiệu ứng ở đây nếu cần, hoặc chờ ReceiveGameState.
+          // Tuy nhiên, đối với trải nghiệm mượt mà, ta có thể dựa vào isMyTurnRef để phỏng đoán:
+          // Nếu ĐANG là lượt của đối thủ (tức là ta đang chờ), viên đạn này là của đối thủ bắn vào mình.
+          if (!isMyTurnRef.current) {
             setMyGrid(prev => {
               const next = prev.map(r => r.map(c => ({ ...c })));
               if (y >= 0 && y < next.length && x >= 0 && x < next[0].length) {
@@ -178,12 +218,7 @@ export default function BattleScreen() {
               return next;
             });
           }
-          if (turnPlayerId) {
-            const isMine = String(turnPlayerId) === String(playerData.playerId);
-            setIsMyTurn(isMine);
-            setTurnCount(t => t + 1);
-            setStatusMessage(isMine ? 'Your turn! Click to fire.' : "Opponent's turn...");
-          }
+          
           if (isGameOver) setGameOver(true);
         };
 
@@ -205,7 +240,14 @@ export default function BattleScreen() {
           setStatusMessage(isMyTurnRef.current ? 'Your turn! Click to fire.' : "Opponent's turn...");
         };
 
+        const onVrLinkConfirmed = () => {
+          if (!active) return;
+          setMyHasVr(true);
+          localStorage.setItem('myHasVr', 'true');
+        };
+
         conn.on('ReceiveGameState', onGameState);
+        conn.on('ReceiveVrLinkConfirmed', onVrLinkConfirmed);
         conn.on('ReceiveGameStarted', onGameStarted);
         conn.on('ReceiveShotResult', onShotResult);
         conn.on('ReceiveGameOver', onGameOver);
@@ -220,6 +262,7 @@ export default function BattleScreen() {
           conn.off('ReceiveGameOver', onGameOver);
           conn.off('ReceivePlayerDisconnected', onDisconnected);
           conn.off('ReceivePlayerReconnected', onReconnected);
+          conn.off('ReceiveVrLinkConfirmed', onVrLinkConfirmed);
         };
       } catch (err) {
         console.error('[BattleScreen] SignalR setup error:', err);
@@ -260,9 +303,14 @@ export default function BattleScreen() {
         setGameOver(true);
         setWinner('you');
       } else {
-        setIsMyTurn(false);
-        setStatusMessage("Opponent's turn...");
+        if (result.result === 'Miss') {
+          setIsMyTurn(false);
+          setStatusMessage("Opponent's turn...");
+        } else {
+          setStatusMessage("Direct Hit! You get another shot.");
+        }
         setTurnCount(t => t + 1);
+        setTimeLeft(30);
       }
     } catch (err) {
       console.error('[BattleScreen] fireShot error:', err);
@@ -292,6 +340,20 @@ export default function BattleScreen() {
         showToast({ type: 'error', message: 'Failed to surrender' });
         setIsFiring(false);
       }
+    }
+  };
+
+  // ── Báo Cáo AFK (Timeout Claim) ────────────────────────────────────
+  const handleClaimTimeout = async () => {
+    if (gameOver || !playerData || !matchId) return;
+    try {
+      setIsFiring(true);
+      await claimTimeout(matchId, playerData.playerId);
+      showToast({ type: 'hit', message: 'AFK Timeout Claimed!' });
+    } catch (err) {
+      console.error('[BattleScreen] Claim timeout error:', err);
+      showToast({ type: 'error', message: err?.response?.data?.message || 'Failed to claim AFK' });
+      setIsFiring(false);
     }
   };
 
@@ -352,7 +414,14 @@ export default function BattleScreen() {
             </div>
             <div>
               <h1 className="text-xl font-black text-white">Battle in Progress</h1>
-              <p className="text-blue-300 text-xs">Match #{matchId} · Turn {turnCount}</p>
+              <div className="flex items-center gap-2">
+                <p className="text-blue-300 text-xs">Match #{matchId} · Turn {turnCount}</p>
+                {opponentHasVr && (
+                  <span className="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 text-[10px] font-bold border border-purple-500/30">
+                    🥽 Opponent is using VR
+                  </span>
+                )}
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -364,6 +433,25 @@ export default function BattleScreen() {
                 : isMyTurn ? <><Target className="w-5 h-5" /> Your Turn</>
                   : <><Clock className="w-5 h-5 animate-spin" style={{ animationDuration: '2s' }} /> Opponent's Turn</>}
             </div>
+            
+            {!gameOver && (
+              <div className={`px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 ${timeLeft > 10 ? 'bg-blue-500/20 text-blue-300' : 'bg-red-500/20 text-red-500 animate-pulse'}`}>
+                <Clock className="w-4 h-4" />
+                {timeLeft}s
+              </div>
+            )}
+
+            {!gameOver && !isMyTurn && timeLeft === 0 && (
+              <button 
+                onClick={handleClaimTimeout} 
+                disabled={isFiring} 
+                className="bg-yellow-500/20 hover:bg-yellow-500/40 border-2 border-yellow-500/50 text-yellow-500 px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 disabled:opacity-50"
+              >
+                <AlertTriangle className="w-4 h-4" />
+                Claim AFK Win
+              </button>
+            )}
+
             {!gameOver && (
               <button 
                 onClick={handleSurrender} 
@@ -381,6 +469,18 @@ export default function BattleScreen() {
           <p className="text-blue-200 text-sm">{statusMessage}</p>
         </div>
 
+        {myHasVr ? (
+          <div className="flex flex-col items-center justify-center py-20 bg-white/5 backdrop-blur-md rounded-3xl border border-white/10 text-center mt-4">
+            <div className="w-24 h-24 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-full flex items-center justify-center shadow-xl mb-6 border-4 border-purple-400/30">
+              <span className="text-5xl">🥽</span>
+            </div>
+            <h2 className="text-3xl font-black text-white mb-4">Switch to VR Headset</h2>
+            <p className="text-blue-200 text-lg max-w-md mx-auto">
+              Game has started! Please put on your VR headset to command your fleet and sink the enemy.
+            </p>
+          </div>
+        ) : (
+          <>
         {/* Stats */}
         <div className="grid grid-cols-3 gap-4 mb-4">
           <div className="bg-white/10 rounded-xl p-3 text-center border border-white/10">
@@ -415,6 +515,8 @@ export default function BattleScreen() {
             {renderGrid(myGrid, false)}
           </div>
         </div>
+          </>
+        )}
 
         {/* Game Over */}
         {gameOver && (

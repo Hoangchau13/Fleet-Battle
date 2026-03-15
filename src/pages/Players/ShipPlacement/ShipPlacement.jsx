@@ -282,10 +282,6 @@ export default function ShipPlacement() {
     }
   };
 
-  const handleCombat = () => {
-    navigate(`/battle/${matchId}/${userId}/${serverId}`);
-  };
-
   // Hover preview
   const previewCells = hoverCell && selectedShip && (() => {
     const ship = ships.find(s => s.shipTypeId === selectedShip);
@@ -337,8 +333,8 @@ export default function ShipPlacement() {
                   <div
                     key={`${r}-${c}`}
                     className={`w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-[2px] flex items-center justify-center text-[10px] ${isActive
-                        ? (isDepleted ? 'bg-gray-600' : (SHIP_COLORS[ship.shipTypeId] || 'bg-blue-500'))
-                        : 'bg-transparent'
+                      ? (isDepleted ? 'bg-gray-600' : (SHIP_COLORS[ship.shipTypeId] || 'bg-blue-500'))
+                      : 'bg-transparent'
                       }`}
                   >
                     {isActive && isAnchor && <span className="text-white/80 leading-none">⚓</span>}
@@ -393,10 +389,10 @@ export default function ShipPlacement() {
                     }}
                     disabled={ship.remaining === 0 || submitDone}
                     className={`w-full text-left p-3 rounded-xl border transition-all ${selectedShip === ship.shipTypeId
-                        ? 'border-blue-400 bg-blue-500/30 shadow-lg shadow-blue-500/20'
-                        : ship.remaining === 0
-                          ? 'border-white/10 bg-white/5 opacity-50 cursor-not-allowed'
-                          : 'border-white/20 bg-white/10 hover:bg-white/20 cursor-pointer'
+                      ? 'border-blue-400 bg-blue-500/30 shadow-lg shadow-blue-500/20'
+                      : ship.remaining === 0
+                        ? 'border-white/10 bg-white/5 opacity-50 cursor-not-allowed'
+                        : 'border-white/20 bg-white/10 hover:bg-white/20 cursor-pointer'
                       }`}
                   >
                     <div className="flex justify-between items-center mb-2">
@@ -472,12 +468,12 @@ export default function ShipPlacement() {
                         <div
                           key={c}
                           className={`flex-shrink-0 w-9 h-9 border border-blue-800/50 cursor-pointer transition-all ${cell
-                              ? `${cell.color} opacity-90`
-                              : isPreview
-                                ? isBadPreview
-                                  ? 'bg-red-500/50'
-                                  : 'bg-blue-400/50'
-                                : 'bg-blue-900/40 hover:bg-blue-700/40'
+                            ? `${cell.color} opacity-90`
+                            : isPreview
+                              ? isBadPreview
+                                ? 'bg-red-500/50'
+                                : 'bg-blue-400/50'
+                              : 'bg-blue-900/40 hover:bg-blue-700/40'
                             }`}
                           onClick={() => handleCellClick(r, c)}
                           onMouseEnter={() => setHoverCell({ r, c })}
@@ -523,13 +519,6 @@ export default function ShipPlacement() {
                       <CheckCircle className="w-5 h-5" />
                       Ships submitted! Waiting for opponent...
                     </div>
-                    <button
-                      onClick={handleCombat}
-                      className="w-full bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-400 hover:to-red-500 text-white font-black py-4 rounded-xl transition-all shadow-2xl flex items-center justify-center gap-2 text-lg animate-pulse"
-                    >
-                      <ArrowRight className="w-6 h-6" />
-                      ⚔ Combat!
-                    </button>
                   </div>
                 )}
               </div>

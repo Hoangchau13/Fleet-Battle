@@ -203,16 +203,18 @@ export default function ShipPlacement() {
       try {
         const conn = await ensureConnectedAndRegistered(playerData.playerId);
 
-        const onGameStarted = (starterPlayerId) => {
+        const onGameStarted = (starterPlayerId, levelId) => {
           if (!active) return;
           console.log('[ShipPlacement] ReceiveGameStarted → BattleScreen:', starterPlayerId);
+          console.log("Level hiện tại của trận đấu:", levelId);
           navigate(`/battle/${matchId}/${userId}/${serverId}`, { state: { starterPlayerId } });
         };
 
-        const onGameState = (gameState) => {
+        const onGameState = (response) => {
           if (!active) return;
-          if (gameState?.status === 'Playing') {
-            navigate(`/battle/${matchId}/${userId}/${serverId}`, { state: { starterPlayerId: gameState.turnPlayerId } });
+          console.log("Cập nhật state cho level:", response?.levelId);
+          if (response?.status === 'Playing') {
+            navigate(`/battle/${matchId}/${userId}/${serverId}`, { state: { starterPlayerId: response.turnPlayerId } });
           }
         };
 

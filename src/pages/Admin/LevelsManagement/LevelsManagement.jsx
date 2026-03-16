@@ -359,8 +359,8 @@ function LevelsManagement() {
                     </div>
                     <div className="level-stat-row">
                       <Clock size={20} className="stat-icon" />
-                      <span className="stat-label">Time Limit</span>
-                      <span className="stat-value">{level.timeLimit}s per turn</span>
+                      <span className="stat-label">ELO Range</span>
+                      <span className="stat-value">{level.eloMin} - {level.eloMax}</span>
                     </div>
                     <div className="level-stat-row">
                       <Ship size={20} className="stat-icon" />
@@ -432,7 +432,7 @@ function LevelsManagement() {
                   <div className="preview-details">
                     <span>Board: {selectedLevel.boardSize}x{selectedLevel.boardSize}</span>
                     <span>•</span>
-                    <span>Time: {selectedLevel.timeLimit}s</span>
+                    <span>ELO: {selectedLevel.eloMin} - {selectedLevel.eloMax}</span>
                     <span>•</span>
                     <span>Ships: {selectedLevel.totalShips || 0}</span>
                   </div>

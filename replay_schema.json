@@ -1,0 +1,26 @@
+{
+  "get": {
+    "tags": [
+      "Match"
+    ],
+    "summary": "Xem lại toàn bộ diễn biến trận đấu đã kết thúc (Replay).",
+    "description": "Yêu cầu đăng nhập và người gọi phải là 1 trong 2 player của trận.\r\nFog of War TẮT hoàn toàn: vị trí tàu cả 2 bên được trả về ngay từ đầu dưới dạng InitialGrid (CellState).\r\nFE dùng InitialGrid làm trạng thái khởi đầu, sau đó apply từng Turns để mô phỏng timeline.\r\nTrả về 404 nếu trận chưa kết thúc, không tồn tại, hoặc người gọi không phải player trong trận.",
+    "parameters": [
+      {
+        "name": "matchId",
+        "in": "path",
+        "required": true,
+        "style": "simple",
+        "schema": {
+          "type": "integer",
+          "format": "int32"
+        }
+      }
+    ],
+    "responses": {
+      "200": {
+        "description": "Success"
+      }
+    }
+  }
+}

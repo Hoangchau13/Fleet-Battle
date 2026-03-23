@@ -18,9 +18,10 @@ import {
   X,
   Swords,
 } from 'lucide-react';
-import { logout, getPlayerProfileByUserAndServer, linkVrDevice } from '../../../api';
+import { logout, getPlayerProfileByUserAndServer, linkVrDevice, getMatchReplay } from '../../../api';
 import { useMatchmakingHub } from '../../../hooks/useMatchmakingHub';
 import { ensureConnectedAndRegistered } from '../../../hooks/matchHubConnection';
+import ReplayModal from './ReplayModal';
 
 export default function HomePage() {
   const { userId, serverId } = useParams();
@@ -30,6 +31,9 @@ export default function HomePage() {
   const [playerData, setPlayerData] = useState(null);
   const [isLinkingVr, setIsLinkingVr] = useState(false);
   const [vrLinkError, setVrLinkError] = useState('');
+  const [replayData, setReplayData] = useState(null);
+  const [isReplayModalOpen, setIsReplayModalOpen] = useState(false);
+  const [loadingReplayId, setLoadingReplayId] = useState(null);
 
   useEffect(() => {
     if (!userId || !serverId) {
@@ -50,7 +54,7 @@ export default function HomePage() {
             wins: realProfile.totalWins,
             losses: realProfile.totalLosses,
           });
-          
+
           // localStorage.setItem('currentPlayer', ...) removed as per requirement
         } else {
           // If no player found on this server, maybe redirect to creation? 
@@ -131,10 +135,10 @@ export default function HomePage() {
       setVrLinkError('');
       try {
         const playerIdValue = playerData?.playerId || playerData?.id;
-        
+
         let linkTimeout;
         const conn = await ensureConnectedAndRegistered(playerIdValue);
-        
+
         const onVrLinkConfirmed = () => {
           console.log('[HomePage] ReceiveVrLinkConfirmed event received!');
           setVrConnected(true);
@@ -143,9 +147,9 @@ export default function HomePage() {
           clearTimeout(linkTimeout);
           conn.off('ReceiveVrLinkConfirmed', onVrLinkConfirmed);
         };
-        
+
         conn.on('ReceiveVrLinkConfirmed', onVrLinkConfirmed);
-        
+
         linkTimeout = setTimeout(() => {
           conn.off('ReceiveVrLinkConfirmed', onVrLinkConfirmed);
           setIsLinkingVr(prev => {
@@ -156,7 +160,7 @@ export default function HomePage() {
             return prev;
           });
         }, 30000); // 30 seconds timeout
-        
+
         await linkVrDevice(pin, playerIdValue);
         console.log('Successfully requested VR link, waiting for VR device confirmation...');
       } catch (error) {
@@ -181,6 +185,19 @@ export default function HomePage() {
 
   const handleChangeServer = () => {
     navigate('/server-selection');
+  };
+
+  const handleReplay = async (matchId) => {
+    try {
+      setLoadingReplayId(matchId);
+      const data = await getMatchReplay(matchId);
+      setReplayData(data);
+      setIsReplayModalOpen(true);
+    } catch (error) {
+      console.error('Failed to fetch replay:', error);
+    } finally {
+      setLoadingReplayId(null);
+    }
   };
 
   // ── Loading guard ─────────────────────────────────────────────────
@@ -451,9 +468,6 @@ export default function HomePage() {
             <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-lg">
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-bold text-gray-900">Recent Matches</h2>
-                <button className="text-blue-600 hover:text-blue-700 text-sm font-semibold transition-colors">
-                  View All
-                </button>
               </div>
 
               <div className="space-y-3">
@@ -501,6 +515,13 @@ export default function HomePage() {
                               <p className="text-xs text-gray-500">{match.duration}</p>
                             )}
                           </div>
+                          <button
+                            onClick={() => handleReplay(match.matchId)}
+                            disabled={loadingReplayId === match.matchId}
+                            className="text-blue-600 hover:text-blue-700 text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {loadingReplayId === match.matchId ? 'Loading...' : 'Replay'}
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -515,6 +536,15 @@ export default function HomePage() {
           </div>
         </div>
       </div>
+
+      {/* Replay Modal */}
+      {isReplayModalOpen && (
+        <ReplayModal 
+           replayData={replayData} 
+           currentUser={playerData} 
+           onClose={() => setIsReplayModalOpen(false)} 
+        />
+      )}
     </div>
   );
 }

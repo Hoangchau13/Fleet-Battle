@@ -64,3 +64,8 @@ export const getMatchResult = async (matchId) => {
   const response = await apiClient.get(`/match/${matchId}/result`);
   return response.data;
 };
+
+export const getMatchReplay = async (matchId) => {
+  const response = await apiClient.get(`/match/${matchId}/replay`);
+  return response.data;
+};

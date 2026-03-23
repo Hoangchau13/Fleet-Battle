@@ -1,0 +1,1650 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Battleship.API",
+    "version": "1.0"
+  },
+  "paths": {
+    "/api/admin/users/{id}/role": {
+      "put": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Update User Role (Admin/SuperAdmin).",
+        "description": "Thay đổi quyền hạn của user. SuperAdmin có toàn quyền (trừ tự sát/tạo SuperAdmin khác). Admin chỉ được thăng cấp Player.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID của user cần sửa",
+            "required": true,
+            "style": "simple",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Role mới",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserRoleRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserRoleRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserRoleRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/api/admin/users/{id}/status": {
+      "put": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Cập nhật trạng thái User (Khóa/Mở khóa).",
+        "description": "Gửi true để mở khóa (Active), false để khóa (Ban).",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID của user cần sửa",
+            "required": true,
+            "style": "simple",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Trạng thái mới",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserStatusRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserStatusRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserStatusRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/api/admin/users/{id}": {
+      "delete": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Xóa User (Phân quyền: SuperAdmin > Admin > Player).",
+        "description": "SuperAdmin xóa được Admin và Player. Admin chỉ xóa được Player.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "style": "simple",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Xem chi tiết User.",
+        "description": "Lấy thông tin chi tiết bao gồm stats game (Elo, thắng/thua).",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID của user",
+            "required": true,
+            "style": "simple",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/api/admin/users": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Lấy danh sách Users (có phân trang & tìm kiếm).",
+        "description": "Trả về danh sách user với thông tin cơ bản. Hỗ trợ tìm kiếm theo username hoặc email.",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Trang hiện tại (Mặc định: 1)",
+            "style": "form",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "description": "Số lượng user mỗi trang (Mặc định: 20)",
+            "style": "form",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          },
+          {
+            "name": "keyword",
+            "in": "query",
+            "description": "Từ khóa tìm kiếm (Username hoặc Email)",
+            "style": "form",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/api/admin/users/{id}/players": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Lấy danh sách Players của một User (Admin).",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "ID của user",
+            "required": true,
+            "style": "simple",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/api/admin/roles": {
+      "get": {
+        "tags": [
+          "Admin"
+        ],
+        "summary": "Lấy danh sách quyền (Roles).",
+        "description": "Danh sách các Role có sẵn trong hệ thống để dùng cho dropdown phân quyền.",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/api/auth/register": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Đăng ký tài khoản mới.",
+        "description": "Tạo tài khoản User mới. Role mặc định là \"Player\" và trạng thái là Active.",
+        "requestBody": {
+          "description": "Thông tin đăng ký (Username, Password, Email)",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Đăng nhập.",
+        "description": "Xác thực User và trả về JWT Token. Nếu tài khoản bị khóa sẽ trả về lỗi 403.",
+        "requestBody": {
+          "description": "Thông tin đăng nhập (Username, Password)",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/api/Dashboard/admin-overview": {
+      "get": {
+        "tags": [
+          "Dashboard"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/api/game/levels": {
+      "get": {
+        "tags": [
+          "GameData"
+        ],
+        "summary": "Lấy danh sách tất cả các Level.",
+        "description": "Trả về danh sách các Game Level có sẵn (VD: Level 1, Level 2, Tutorial).",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "GameData"
+        ],
+        "summary": "Tạo Level mới (Admin only).",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateLevelRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateLevelRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateLevelRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/api/game/config/{levelId}": {
+      "get": {
+        "tags": [
+          "GameData"
+        ],
+        "summary": "Lấy cấu hình chi tiết của một Level.",
+        "description": "Trả về thông tin chi tiết bao gồm thời gian giới hạn, kích thước bàn cờ và danh sách các loại tàu cần xếp.",
+        "parameters": [
+          {
+            "name": "levelId",
+            "in": "path",
+            "description": "ID của level",
+            "required": true,
+            "style": "simple",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/api/game/levels/{id}": {
+      "put": {
+        "tags": [
+          "GameData"
+        ],
+        "summary": "Sửa cấu hình cơ bản của Level (Admin only).",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "style": "simple",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateLevelRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateLevelRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateLevelRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "GameData"
+        ],
+        "summary": "Xóa Level (Admin only).",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "style": "simple",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/api/game/levels/{id}/ships": {
+      "post": {
+        "tags": [
+          "GameData"
+        ],
+        "summary": "Cấu hình Tàu cho từng Level (Admin only).",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "style": "simple",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/LevelShipConfigRequestItem"
+                }
+              }
+            },
+            "text/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/LevelShipConfigRequestItem"
+                }
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/LevelShipConfigRequestItem"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/api/game/shiptypes": {
+      "get": {
+        "tags": [
+          "GameData"
+        ],
+        "summary": "Lấy danh sách Loại Tàu (Ship Types).",
+        "description": "Công khai, dùng để hiển thị thông tin tàu hoặc giới thiệu game.",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "GameData"
+        ],
+        "summary": "Tạo một loại tàu mới (Admin only).",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateShipTypeRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateShipTypeRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateShipTypeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/api/game/shiptypes/{id}": {
+      "put": {
+        "tags": [
+          "GameData"
+        ],
+        "summary": "Cập nhật thông tin loại tàu (Admin only).",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "style": "simple",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateShipTypeRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateShipTypeRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateShipTypeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "GameData"
+        ],
+        "summary": "Xóa loại tàu (Admin only).",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "style": "simple",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/api/health": {
+      "get": {
+        "tags": [
+          "Health"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/api/match/find": {
+      "post": {
+        "tags": [
+          "Match"
+        ],
+        "summary": "Tìm trận đấu.",
+        "description": "Server tự xác định Level phù hợp dựa trên ELO của Player.\r\nƯu tiên ghép cùng Level, mở rộng sang Level kề sau mỗi 15 giây không có đối thủ.\r\nResponse trả về LevelId để client biết cần load ship config nào.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FindMatchRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FindMatchRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/FindMatchRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/api/match/cancel": {
+      "delete": {
+        "tags": [
+          "Match"
+        ],
+        "summary": "Hủy tìm trận (khi đang trong hàng chờ Searching).",
+        "parameters": [
+          {
+            "name": "playerId",
+            "in": "query",
+            "style": "form",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/api/match/{matchId}/confirm": {
+      "post": {
+        "tags": [
+          "Match"
+        ],
+        "summary": "Xác nhận tham gia trận đấu (Match Confirmation).",
+        "parameters": [
+          {
+            "name": "matchId",
+            "in": "path",
+            "required": true,
+            "style": "simple",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "playerId",
+            "in": "query",
+            "style": "form",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/api/match/{matchId}/setup": {
+      "post": {
+        "tags": [
+          "Match"
+        ],
+        "summary": "Xếp tàu (Setup Phase).",
+        "parameters": [
+          {
+            "name": "matchId",
+            "in": "path",
+            "required": true,
+            "style": "simple",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "playerId",
+            "in": "query",
+            "style": "form",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ShipPlacementRequest"
+                }
+              }
+            },
+            "text/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ShipPlacementRequest"
+                }
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ShipPlacementRequest"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/api/match/{matchId}/fire": {
+      "post": {
+        "tags": [
+          "Match"
+        ],
+        "summary": "Bắn tàu (Combat Phase).",
+        "parameters": [
+          {
+            "name": "matchId",
+            "in": "path",
+            "required": true,
+            "style": "simple",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "playerId",
+            "in": "query",
+            "style": "form",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FireShotRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FireShotRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/FireShotRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/api/match/{matchId}/state": {
+      "get": {
+        "tags": [
+          "Match"
+        ],
+        "summary": "Lấy trạng thái trận đấu (Sync – dùng khi reconnect).",
+        "parameters": [
+          {
+            "name": "matchId",
+            "in": "path",
+            "required": true,
+            "style": "simple",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "playerId",
+            "in": "query",
+            "style": "form",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/api/match/{id}/claim-timeout": {
+      "post": {
+        "tags": [
+          "Match"
+        ],
+        "summary": "Báo cáo đối thủ hết giờ/đứt mạng (Auto-surrender).",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "style": "simple",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "playerId",
+            "in": "query",
+            "style": "form",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/api/match/{matchId}/surrender": {
+      "post": {
+        "tags": [
+          "Match"
+        ],
+        "summary": "Đầu hàng.",
+        "parameters": [
+          {
+            "name": "matchId",
+            "in": "path",
+            "required": true,
+            "style": "simple",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "playerId",
+            "in": "query",
+            "style": "form",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/api/match/live": {
+      "get": {
+        "tags": [
+          "Match"
+        ],
+        "summary": "Danh sách các trận đang diễn ra (Live).",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/api/match/{matchId}/result": {
+      "get": {
+        "tags": [
+          "Match"
+        ],
+        "summary": "Lấy kết quả trận đấu sau khi kết thúc (người thắng, người thua, ELO thay đổi).",
+        "description": "Chỉ trả về dữ liệu khi trận đã ở trạng thái \"Completed\".\r\nTrả về 404 nếu trận đang diễn ra hoặc không tồn tại.",
+        "parameters": [
+          {
+            "name": "matchId",
+            "in": "path",
+            "required": true,
+            "style": "simple",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/api/match/{matchId}/replay": {
+      "get": {
+        "tags": [
+          "Match"
+        ],
+        "summary": "Xem lại toàn bộ diễn biến trận đấu đã kết thúc (Replay).",
+        "description": "Yêu cầu đăng nhập và người gọi phải là 1 trong 2 player của trận.\r\nFog of War TẮT hoàn toàn: vị trí tàu cả 2 bên được trả về ngay từ đầu dưới dạng InitialGrid (CellState).\r\nFE dùng InitialGrid làm trạng thái khởi đầu, sau đó apply từng Turns để mô phỏng timeline.\r\nTrả về 404 nếu trận chưa kết thúc, không tồn tại, hoặc người gọi không phải player trong trận.",
+        "parameters": [
+          {
+            "name": "matchId",
+            "in": "path",
+            "required": true,
+            "style": "simple",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/api/match/{matchId}/spectate": {
+      "get": {
+        "tags": [
+          "Match"
+        ],
+        "summary": "Xem trận đấu (Khán giả).",
+        "parameters": [
+          {
+            "name": "matchId",
+            "in": "path",
+            "required": true,
+            "style": "simple",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/api/player/create": {
+      "post": {
+        "tags": [
+          "Player"
+        ],
+        "summary": "Tạo Player mới trong một Group (Server).",
+        "description": "Mỗi User cần tạo một Player (Nhân vật) riêng cho từng Group (Server) mà họ muốn chơi.",
+        "requestBody": {
+          "description": "Thông tin tạo Player (GroupId, DisplayName)",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePlayerRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePlayerRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePlayerRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/api/player/mine": {
+      "get": {
+        "tags": [
+          "Player"
+        ],
+        "summary": "Lấy danh sách nhân vật (Player) của tôi.",
+        "description": "Trả về tất cả các Player mà User hiện tại đã tạo ở các Server khác nhau.",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/api/player/{id}": {
+      "get": {
+        "tags": [
+          "Player"
+        ],
+        "summary": "Xem Profile người chơi (bao gồm stats và 10 trận gần nhất).",
+        "description": "Trả về thông tin chi tiết, win/loss stats, streak và lịch sử 10 trận gần nhất.\r\nĐể lấy lịch sử trận đấu, dùng endpoint này thay cho endpoint /history (đã xóa).",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "style": "simple",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/api/player/user/{userId}/server/{serverId}": {
+      "get": {
+        "tags": [
+          "Player"
+        ],
+        "summary": "Lấy Profile của Player dựa trên UserId và ServerId (GroupId).",
+        "description": "Trả về tất cả thông tin hoàn chỉnh giống y hệt /api/player/{playerId} (bao gồm lịch sử, tỷ lệ thắng...) cộng thêm ServerName.\r\nDành riêng cho kịch bản Query chéo không biết thẳng PlayerId.",
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "style": "simple",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "serverId",
+            "in": "path",
+            "required": true,
+            "style": "simple",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/api/vr/generate-code": {
+      "get": {
+        "tags": [
+          "VrLink"
+        ],
+        "summary": "[VR] Tạo mã kết nối 6 ký tự.",
+        "description": "Kính VR gọi endpoint này ngay sau khi đã kết nối tới /hubs/vr.\r\nTruyền ConnectionId của kết nối SignalR VrHub vào query param.\r\nServer sẽ tạo mã 6 ký tự in hoa (TTL 5 phút) và ghi nhớ liên kết giữa mã và ConnectionId đó.\r\nVR hiển thị mã lên màn hình và chờ người dùng nhập từ web.",
+        "parameters": [
+          {
+            "name": "connectionId",
+            "in": "query",
+            "description": "ConnectionId của kính VR trên VrHub (lấy từ SignalR connection)",
+            "style": "form",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/api/vr/link-device": {
+      "post": {
+        "tags": [
+          "VrLink"
+        ],
+        "summary": "[Web] Nhập mã VR để kết nối kính VR với tài khoản.",
+        "description": "Người dùng đã đăng nhập trên web nhập mã 6 ký tự từ kính VR vào đây.\r\nServer sẽ xác thực mã, tìm kính VR tương ứng và bắn JWT Token xuống kính VR qua SignalR.\r\nKính VR nhận token, tự động chuyển sang trạng thái đã xác thực và reconnect MatchHub.",
+        "requestBody": {
+          "description": "Mã kết nối VR và PlayerId muốn dùng để chơi.",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VrLinkDeviceRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VrLinkDeviceRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/VrLinkDeviceRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/api/vr/status/{code}": {
+      "get": {
+        "tags": [
+          "VrLink"
+        ],
+        "summary": "[VR/Debug] Kiểm tra mã còn hiệu lực không.",
+        "description": "VR có thể poll endpoint này để biết mã đã được web nhập chưa (nếu mã hết thì hết hiệu lực).\r\nTrả 200 nếu mã còn tồn tại trong cache, 404 nếu đã hết hạn hoặc không hợp lệ.",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "style": "simple",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/api/world/groups": {
+      "get": {
+        "tags": [
+          "World"
+        ],
+        "summary": "Lấy danh sách các Server Group.",
+        "description": "Danh sách các cụm server để người chơi chọn.\r\nNếu đã đăng nhập, trường HasJoined cho biết user đã tạo Player trong server đó chưa.",
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "World"
+        ],
+        "summary": "Tạo Server Group mới. (Admin/SuperAdmin)",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateGroupRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateGroupRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateGroupRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/api/world/groups/{id}": {
+      "get": {
+        "tags": [
+          "World"
+        ],
+        "summary": "Lấy chi tiết một Server Group.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "style": "simple",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "World"
+        ],
+        "summary": "Cập nhật thông tin Server Group. (Admin/SuperAdmin)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "style": "simple",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateGroupRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateGroupRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateGroupRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    },
+    "/api/world/groups/{id}/leaderboard": {
+      "get": {
+        "tags": [
+          "World"
+        ],
+        "summary": "Xem bảng xếp hạng của Server.",
+        "description": "Top 100 người chơi có Elo cao nhất tại server này.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "style": "simple",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CreateGroupRequest": {
+        "type": "object",
+        "properties": {
+          "groupName": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreateLevelRequest": {
+        "type": "object",
+        "properties": {
+          "levelName": {
+            "type": "string",
+            "nullable": true
+          },
+          "boardSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "timeLimit": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "eloMin": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "eloMax": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "eloPoints": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreatePlayerRequest": {
+        "type": "object",
+        "properties": {
+          "groupId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "displayName": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreateShipTypeRequest": {
+        "type": "object",
+        "properties": {
+          "shipName": {
+            "type": "string",
+            "nullable": true
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "modelCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "shapePattern": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FindMatchRequest": {
+        "type": "object",
+        "properties": {
+          "playerId": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "FireShotRequest": {
+        "type": "object",
+        "properties": {
+          "x": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "y": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LevelShipConfigRequestItem": {
+        "type": "object",
+        "properties": {
+          "shipTypeId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "quantity": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "LoginRequest": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string",
+            "nullable": true
+          },
+          "password": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "RegisterRequest": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string",
+            "nullable": true
+          },
+          "password": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ShipPlacementRequest": {
+        "type": "object",
+        "properties": {
+          "shipTypeId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "x": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "y": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "rotation": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpdateGroupRequest": {
+        "type": "object",
+        "properties": {
+          "groupName": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpdateLevelRequest": {
+        "type": "object",
+        "properties": {
+          "boardSize": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "timeLimit": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "eloMin": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "eloMax": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "eloPoints": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpdateShipTypeRequest": {
+        "type": "object",
+        "properties": {
+          "shipName": {
+            "type": "string",
+            "nullable": true
+          },
+          "size": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "modelCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "shapePattern": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpdateUserRoleRequest": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "UpdateUserStatusRequest": {
+        "type": "object",
+        "properties": {
+          "isActive": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "VrLinkDeviceRequest": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "nullable": true
+          },
+          "playerId": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Web gửi lên để link kính VR với tài khoản đã đăng nhập."
+      }
+    },
+    "securitySchemes": {
+      "Bearer": {
+        "type": "http",
+        "description": "Nhập JWT token vào đây. Ví dụ: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  },
+  "security": [
+    {
+      "Bearer": []
+    }
+  ]
+}
